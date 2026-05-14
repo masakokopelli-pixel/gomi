@@ -1,0 +1,1707 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>収集ナビ</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800;900&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCUT4RQWOu07a9kknTpEe7McYvfcrgk7xQ"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+:root{
+  --bg:#0d0f14;--sf:#161922;--sf2:#1e2230;--sf3:#252a3a;
+  --pr:#FF5722;--pg:rgba(255,87,34,.22);
+  --gn:#22C55E;--yw:#FBBF24;--rd:#EF4444;--bl:#3B82F6;--pu:#A78BFA;--or:#F97316;
+  --tx:#F0F4FF;--dm:#6B7A99;--md:#94A3B8;
+  --bd:#252a3a;--bl2:#2d3450;
+}
+html,body{height:100%;overflow:hidden;font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--tx);}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;}
+.hidden{display:none!important;}
+input[type=text]{background:var(--sf3);border:1.5px solid var(--bl2);border-radius:8px;
+  color:var(--tx);padding:9px 11px;font-size:14px;font-family:'Noto Sans JP',sans-serif;outline:none;width:100%;}
+input[type=text]:focus{border-color:var(--pr);}
+/* ─ TOAST ─ */
+#toast{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:9999;
+  background:var(--sf2);border:1.5px solid;border-radius:10px;
+  padding:8px 16px;font-size:13px;font-weight:700;white-space:nowrap;
+  box-shadow:0 6px 24px rgba(0,0,0,.6);pointer-events:none;transition:opacity .3s;}
+#toast.s{border-color:var(--gn);color:var(--gn);}
+#toast.w{border-color:var(--yw);color:var(--yw);}
+#toast.i{border-color:var(--bl);color:var(--bl);}
+/* ─ OFFLINE BANNER ─ */
+#offline-banner{position:fixed;top:0;left:0;right:0;z-index:9998;
+  background:rgba(249,115,22,.95);color:white;text-align:center;
+  padding:6px;font-size:12px;font-weight:700;letter-spacing:1px;display:none;}
+/* ─ ACCURACY BADGE ─ */
+.gps-badge{padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;
+  font-family:'Barlow Condensed',sans-serif;flex-shrink:0;}
+.gps-bad{background:rgba(239,68,68,.2);color:var(--rd);border:1px solid rgba(239,68,68,.3);}
+.gps-ok{background:rgba(34,197,94,.2);color:var(--gn);border:1px solid rgba(34,197,94,.3);}
+.gps-search{background:rgba(251,191,36,.2);color:var(--yw);border:1px solid rgba(251,191,36,.3);}
+/* ═══ SELECT ═══ */
+.sel-top{padding:14px 16px 10px;flex-shrink:0;position:relative;
+  background:linear-gradient(180deg,rgba(255,87,34,.10) 0%,transparent 100%);
+  border-bottom:1px solid var(--bl2);}
+.sel-top::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--pr),transparent);}
+.sel-title-row{display:flex;align-items:center;gap:10px;}
+.truck-icon{font-size:28px;animation:float 3s ease-in-out infinite;flex-shrink:0;}
+@keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-4px);}}
+.sel-title-row h1{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;
+  letter-spacing:4px;color:var(--pr);text-transform:uppercase;line-height:1;}
+.sel-title-row p{color:var(--dm);font-size:11px;margin-top:2px;}
+.mgr-btn{margin-left:auto;background:var(--sf2);border:1px solid var(--bl2);
+  border-radius:8px;padding:7px 12px;color:var(--md);font-size:13px;font-weight:700;
+  cursor:pointer;flex-shrink:0;}
+.mgr-btn:active{transform:scale(.95);}
+.sel-controls{padding:10px 14px 6px;flex-shrink:0;}
+.sg{margin-bottom:10px;}
+.sg label{display:block;font-size:10px;font-weight:700;letter-spacing:3px;
+  text-transform:uppercase;color:var(--dm);margin-bottom:6px;}
+.veh-wrap{position:relative;}
+.veh-sel{width:100%;padding:11px 40px 11px 12px;background:var(--sf2);
+  border:1.5px solid var(--bl2);border-radius:10px;color:var(--tx);
+  font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:800;letter-spacing:1px;
+  cursor:pointer;outline:none;-webkit-appearance:none;appearance:none;transition:border-color .15s;}
+.veh-sel:focus,.veh-sel.sel{border-color:var(--pr);}
+.veh-sel option{font-family:'Noto Sans JP',sans-serif;font-size:15px;background:#1e2230;color:var(--tx);}
+.veh-chev{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--dm);font-size:16px;pointer-events:none;}
+.waste-toggle{display:flex;gap:8px;}
+.waste-btn{flex:1;padding:11px 6px;border-radius:10px;border:1.5px solid var(--bl2);
+  background:var(--sf2);color:var(--md);font-family:'Noto Sans JP',sans-serif;
+  font-size:14px;font-weight:700;cursor:pointer;transition:all .15s;text-align:center;
+  display:flex;align-items:center;justify-content:center;gap:6px;}
+.waste-btn:active{transform:scale(.96);}
+.waste-btn.active.kan{border-color:var(--pr);background:var(--pg);color:var(--pr);}
+.waste-btn.active.oo{border-color:var(--pu);background:rgba(167,139,250,.15);color:var(--pu);}
+.day-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+.sel-btn{padding:10px 4px;border-radius:9px;border:1.5px solid var(--bl2);
+  background:var(--sf);color:var(--md);font-family:'Barlow Condensed',sans-serif;
+  font-size:16px;font-weight:700;cursor:pointer;transition:all .15s;text-align:center;}
+.sel-btn:active{transform:scale(.95);}
+.sel-btn.active{border-color:var(--pr);background:var(--pg);color:var(--pr);}
+.preview-wrap{flex:1;position:relative;min-height:0;
+  border-top:1px solid var(--bl2);border-bottom:1px solid var(--bl2);}
+#preview-map{width:100%;height:100%;}
+.preview-ph{position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:8px;
+  background:var(--sf);z-index:10;pointer-events:none;transition:opacity .4s;}
+.preview-ph.fade{opacity:0;}
+.preview-ph .phi{font-size:36px;opacity:.3;}
+.preview-ph p{color:var(--dm);font-size:12px;text-align:center;padding:0 20px;}
+.preview-badge{position:absolute;top:8px;left:8px;z-index:500;
+  background:rgba(13,15,20,.88);backdrop-filter:blur(8px);border:1px solid var(--bl2);
+  border-radius:7px;padding:4px 10px;font-size:11px;font-weight:700;color:var(--md);}
+.theme-btn{position:absolute;top:8px;right:8px;z-index:600;
+  background:rgba(13,15,20,.88);backdrop-filter:blur(8px);border:1px solid var(--bl2);
+  border-radius:7px;padding:5px 10px;font-size:12px;font-weight:700;color:var(--md);cursor:pointer;}
+.sel-foot{padding:8px 14px 16px;flex-shrink:0;display:flex;gap:8px;}
+.start-btn{flex:1;padding:14px;border-radius:12px;border:none;
+  background:linear-gradient(135deg,#FF5722,#FF3D00);
+  font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;
+  letter-spacing:4px;color:white;cursor:pointer;opacity:.25;pointer-events:none;transition:all .25s;text-transform:uppercase;}
+.start-btn.ready{opacity:1;pointer-events:all;box-shadow:0 8px 28px var(--pg);}
+.start-btn:active{transform:scale(.97);}
+.data-btn{padding:14px 12px;border-radius:12px;border:1px solid var(--bl2);
+  background:var(--sf2);color:var(--md);font-size:20px;cursor:pointer;flex-shrink:0;}
+/* ═══ CRASH RECOVERY ═══ */
+.recovery-overlay{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.85);
+  display:flex;align-items:center;justify-content:center;}
+.recovery-box{background:var(--sf);border:1px solid var(--yw);border-radius:16px;
+  padding:24px 20px;width:88%;max-width:340px;text-align:center;}
+.recovery-box h2{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;
+  color:var(--yw);letter-spacing:2px;margin-bottom:8px;}
+.recovery-box p{color:var(--md);font-size:13px;margin-bottom:18px;line-height:1.5;}
+.rec-info{background:var(--sf2);border-radius:8px;padding:10px;margin-bottom:16px;text-align:left;}
+.rec-info div{font-size:12px;color:var(--dm);margin-bottom:4px;}
+.rec-info div span{color:var(--tx);font-weight:700;}
+.rec-btns{display:flex;gap:8px;}
+.rec-btn-y{flex:1;padding:11px;border-radius:10px;border:none;background:var(--yw);
+  color:black;font-size:14px;font-weight:700;cursor:pointer;}
+.rec-btn-n{flex:1;padding:11px;border-radius:10px;border:1px solid var(--bl2);
+  background:var(--sf2);color:var(--md);font-size:14px;font-weight:700;cursor:pointer;}
+/* ═══ DATA PANEL ═══ */
+#data-panel{position:fixed;inset:0;z-index:5000;display:flex;flex-direction:column;background:var(--bg);}
+.dp-hd{display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid var(--bl2);
+  background:var(--sf);flex-shrink:0;}
+.dp-hd h2{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;
+  letter-spacing:2px;flex:1;}
+.dp-hd button{background:none;border:none;color:var(--pr);font-size:22px;cursor:pointer;padding:4px;}
+.dp-body{flex:1;overflow-y:auto;padding:16px;}
+.dp-section{margin-bottom:20px;}
+.dp-section h3{font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800;
+  letter-spacing:2px;color:var(--md);margin-bottom:10px;border-bottom:1px solid var(--bl2);
+  padding-bottom:6px;}
+.dp-row{display:flex;gap:8px;margin-bottom:8px;}
+.dp-card{flex:1;background:var(--sf2);border:1px solid var(--bl2);border-radius:10px;
+  padding:12px;text-align:center;}
+.dp-card .dc-num{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;line-height:1;}
+.dp-card .dc-lbl{font-size:10px;color:var(--dm);margin-top:3px;}
+.dp-export-btn{width:100%;padding:12px;border-radius:10px;border:1.5px solid var(--bl2);
+  background:var(--sf2);color:var(--tx);font-size:14px;font-weight:700;cursor:pointer;
+  margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px;}
+.dp-export-btn:active{transform:scale(.97);}
+.dp-export-btn.green{border-color:rgba(34,197,94,.4);color:var(--gn);background:rgba(34,197,94,.08);}
+.dp-export-btn.blue{border-color:rgba(59,130,246,.4);color:var(--bl);background:rgba(59,130,246,.08);}
+.dp-export-btn.orange{border-color:rgba(249,115,22,.4);color:var(--or);background:rgba(249,115,22,.08);}
+.dp-export-btn.red{border-color:rgba(239,68,68,.4);color:var(--rd);background:rgba(239,68,68,.08);}
+/* ═══ MANAGER ═══ */
+#mgr{background:var(--bg);}
+.mgr-hd{display:flex;align-items:center;gap:10px;padding:10px 14px;
+  border-bottom:1px solid var(--bl2);background:var(--sf);flex-shrink:0;}
+.mgr-hd button{background:none;border:none;color:var(--pr);font-size:22px;cursor:pointer;padding:4px;}
+.mgr-hd h2{font-family:'Barlow Condensed',sans-serif;font-size:21px;font-weight:900;letter-spacing:2px;}
+.mgr-tabs{display:flex;border-bottom:1px solid var(--bl2);flex-shrink:0;}
+.mgr-tab{flex:1;padding:11px;background:var(--sf);border:none;color:var(--dm);
+  font-size:13px;font-weight:700;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;}
+.mgr-tab.active{color:var(--pr);border-bottom-color:var(--pr);background:var(--bg);}
+.mgr-body{flex:1;overflow-y:auto;padding:12px 14px;min-height:0;display:flex;flex-direction:column;}
+.veh-item{display:flex;align-items:center;gap:8px;padding:11px 12px;
+  background:var(--sf2);border:1px solid var(--bl2);border-radius:10px;margin-bottom:7px;}
+.veh-nm{flex:1;font-weight:700;font-size:14px;}
+.veh-nm-inp{flex:1;font-size:14px;}
+.vei,.vei3,.vei4{background:var(--sf3);border:1px solid var(--bl2);border-radius:6px;
+  padding:5px 9px;font-size:12px;cursor:pointer;color:var(--dm);white-space:nowrap;}
+.vei3{color:var(--gn);}
+.vei4{color:var(--rd);}
+.add-veh-form{background:var(--sf2);border:1px solid var(--bl2);border-radius:10px;padding:12px;margin-bottom:8px;}
+.frow{display:flex;gap:8px;margin-top:10px;}
+.btn-c{padding:8px 12px;border-radius:8px;border:1px solid var(--bl2);background:var(--sf3);
+  color:var(--md);font-size:13px;font-weight:700;cursor:pointer;}
+.btn-s{padding:8px 16px;border-radius:8px;border:none;background:var(--pr);
+  color:white;font-size:13px;font-weight:700;cursor:pointer;flex:1;}
+.add-btn{width:100%;padding:12px;border-radius:10px;border:1.5px dashed var(--bl2);
+  background:transparent;color:var(--md);font-size:13px;font-weight:700;cursor:pointer;margin-top:6px;}
+.add-btn:active{background:var(--sf2);}
+.pt-nav{display:flex;flex-direction:column;gap:6px;margin-bottom:8px;flex-shrink:0;}
+.pt-veh-row{display:flex;gap:5px;overflow-x:auto;padding-bottom:4px;}
+.pt-vsel{padding:6px 12px;border-radius:18px;border:1.5px solid var(--bl2);
+  background:var(--sf);color:var(--md);font-size:12px;font-weight:700;
+  cursor:pointer;white-space:nowrap;flex-shrink:0;}
+.pt-vsel.active{border-color:var(--pr);color:var(--pr);background:var(--pg);}
+.mgr-waste-row{display:flex;gap:0;border:1px solid var(--bl2);border-radius:9px;overflow:hidden;}
+.mgr-wbtn{flex:1;padding:8px;border:none;background:var(--sf2);color:var(--dm);
+  font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;}
+.mgr-wbtn:first-child{border-right:1px solid var(--bl2);}
+.mgr-wbtn.active.kan{background:rgba(255,87,34,.18);color:var(--pr);}
+.mgr-wbtn.active.oo{background:rgba(167,139,250,.18);color:var(--pu);}
+.mgr-day-row{display:flex;gap:5px;}
+.mgr-daybtn{flex:1;padding:7px;border-radius:8px;border:1.5px solid var(--bl2);
+  background:var(--sf);color:var(--md);font-family:'Barlow Condensed',sans-serif;
+  font-size:15px;font-weight:800;cursor:pointer;text-align:center;}
+.mgr-daybtn.active{border-color:var(--pr);color:var(--pr);background:var(--pg);}
+.bulk-toolbar{display:flex;align-items:center;gap:5px;padding:6px 0;margin-bottom:6px;flex-shrink:0;flex-wrap:wrap;}
+.bulk-toggle{padding:6px 11px;border-radius:8px;border:1.5px solid var(--bl2);background:var(--sf2);color:var(--md);font-size:12px;font-weight:700;cursor:pointer;}
+.bulk-toggle.on{border-color:var(--yw);color:var(--yw);}
+.bulk-selall{padding:6px 9px;border-radius:7px;border:1px solid var(--bl2);background:var(--sf3);color:var(--md);font-size:11px;cursor:pointer;display:none;}
+.bulk-del{padding:6px 9px;border-radius:7px;border:none;background:rgba(239,68,68,.15);color:var(--rd);font-size:11px;font-weight:700;cursor:pointer;display:none;}
+.bulk-c1b,.bulk-c2b{padding:6px 9px;border-radius:7px;border:none;font-size:11px;font-weight:700;cursor:pointer;display:none;}
+.bulk-c1b{background:rgba(239,68,68,.15);color:var(--rd);}
+.bulk-c2b{background:rgba(59,130,246,.15);color:var(--bl);}
+.bulk-count{font-size:11px;color:var(--dm);margin-left:auto;display:none;}
+.pt-section{font-size:10px;font-weight:700;letter-spacing:2px;color:var(--dm);
+  text-transform:uppercase;margin:10px 0 5px;}
+.pt-item{display:flex;align-items:center;gap:7px;padding:9px 10px;
+  background:var(--sf2);border:1px solid var(--bl2);border-radius:9px;
+  margin-bottom:5px;user-select:none;-webkit-user-select:none;position:relative;
+  transition:background .1s;}
+.pt-item.pt-dragging{opacity:.55;background:var(--pg);border-color:var(--pr);
+  box-shadow:0 6px 20px rgba(0,0,0,.45);z-index:50;}
+.drag-handle{color:var(--dm);font-size:18px;padding:0 4px 0 0;cursor:grab;flex-shrink:0;line-height:1;touch-action:none;}
+.pt-cb{width:17px;height:17px;accent-color:var(--pr);flex-shrink:0;display:none;cursor:pointer;}
+.bulk-mode .pt-cb{display:block;}
+.bulk-mode .drag-handle{display:none;}
+.pt-badge{padding:2px 7px;border-radius:5px;font-size:11px;font-weight:800;
+  font-family:'Barlow Condensed',sans-serif;flex-shrink:0;}
+.pt-badge.c1{background:rgba(239,68,68,.2);color:var(--rd);}
+.pt-badge.c2{background:rgba(59,130,246,.2);color:var(--bl);}
+.pt-nm{flex:1;font-size:13px;}
+.pt-eb,.pt-db{background:var(--sf3);border:1px solid var(--bl2);
+  border-radius:6px;padding:4px 8px;font-size:12px;cursor:pointer;color:var(--dm);}
+.pt-db{color:var(--rd);}
+#pt-form-panel{position:absolute;inset:0;background:var(--bg);z-index:100;display:flex;flex-direction:column;}
+.pf-hd{display:flex;align-items:center;padding:11px 14px;border-bottom:1px solid var(--bl2);flex-shrink:0;}
+.pf-hd h3{font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:800;letter-spacing:2px;flex:1;}
+.pf-hd button{background:none;border:none;color:var(--dm);font-size:21px;cursor:pointer;}
+#picker-map{width:100%;height:440px;flex-shrink:0;}
+.picker-hint{text-align:center;font-size:11px;color:var(--dm);padding:5px 8px;
+  background:var(--sf);border-bottom:1px solid var(--bl2);flex-shrink:0;}
+.pf-fields{flex:1;overflow-y:auto;padding:12px 14px;}
+.pf-lbl{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;
+  color:var(--dm);display:block;margin-bottom:6px;margin-top:12px;}
+.cyc-row{display:flex;gap:6px;margin-bottom:6px;}
+.cyc-btn{flex:1;padding:9px;border-radius:8px;border:1.5px solid var(--bl2);
+  background:var(--sf2);color:var(--md);font-family:'Barlow Condensed',sans-serif;
+  font-size:17px;font-weight:800;cursor:pointer;transition:all .15s;}
+.cyc-btn.active.c1{border-color:var(--rd);background:rgba(239,68,68,.15);color:var(--rd);}
+.cyc-btn.active.c2{border-color:var(--bl);background:rgba(59,130,246,.15);color:var(--bl);}
+.pt-coord{font-size:11px;color:var(--dm);padding:5px 0;}
+.pf-save-row{display:flex;gap:8px;margin-top:14px;padding-bottom:8px;}
+/* ═══ MAP SCREEN ═══ */
+#map-screen{background:var(--bg);}
+#map{position:absolute;inset:0;}
+/* Mode overlay */
+.mode-overlay{position:absolute;inset:0;z-index:500;background:rgba(13,15,20,.88);
+  backdrop-filter:blur(6px);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:16px;padding:20px;}
+.mode-overlay h2{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:900;
+  letter-spacing:3px;color:var(--tx);text-transform:uppercase;}
+.mode-overlay .start-info{color:var(--dm);font-size:12px;text-align:center;line-height:1.5;}
+.mode-real-btn{width:100%;max-width:300px;padding:18px;border-radius:14px;border:none;
+  background:linear-gradient(135deg,var(--gn),#16a34a);
+  font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;
+  letter-spacing:3px;color:white;cursor:pointer;text-transform:uppercase;
+  box-shadow:0 8px 28px rgba(34,197,94,.3);}
+.mode-real-btn:active{transform:scale(.97);}
+.mode-demo-btn{width:100%;max-width:300px;padding:14px;border-radius:12px;
+  border:1.5px solid var(--bl2);background:var(--sf2);
+  font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;
+  letter-spacing:2px;color:var(--md);cursor:pointer;text-transform:uppercase;}
+.mode-demo-btn:active{transform:scale(.97);}
+/* Top bar */
+.top-bar{position:absolute;top:0;left:0;right:0;z-index:1000;
+  display:flex;align-items:center;gap:6px;padding:8px 10px;
+  background:rgba(13,15,20,.93);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--bl2);}
+.badge{padding:4px 9px;border-radius:7px;font-family:'Barlow Condensed',sans-serif;
+  font-size:14px;font-weight:800;letter-spacing:1px;}
+.bv{background:var(--pr);color:white;}
+.bd{background:var(--sf2);color:var(--tx);border:1px solid var(--bl2);}
+.bt1{background:rgba(239,68,68,.15);color:var(--rd);border:1px solid rgba(239,68,68,.3);font-size:13px;}
+.bt2{background:rgba(59,130,246,.15);color:var(--bl);border:1px solid rgba(59,130,246,.3);font-size:13px;}
+.bwk{background:rgba(255,87,34,.12);color:var(--pr);border:1px solid rgba(255,87,34,.3);font-size:12px;}
+.bwo{background:rgba(167,139,250,.12);color:var(--pu);border:1px solid rgba(167,139,250,.3);font-size:12px;}
+.top-sp{flex:1;}
+.icon-btn{background:var(--sf2);border:1px solid var(--bl2);border-radius:7px;padding:6px;
+  cursor:pointer;color:var(--dm);font-size:14px;display:flex;align-items:center;justify-content:center;
+  min-width:30px;min-height:30px;transition:all .15s;}
+.icon-btn:active{transform:scale(.9);}
+/* Mode indicator badge */
+.mode-badge{padding:4px 10px;border-radius:7px;font-family:'Barlow Condensed',sans-serif;
+  font-size:13px;font-weight:800;letter-spacing:1px;}
+.mode-badge.real{background:rgba(34,197,94,.2);color:var(--gn);border:1px solid rgba(34,197,94,.4);}
+.mode-badge.demo{background:rgba(251,191,36,.15);color:var(--yw);border:1px solid rgba(251,191,36,.3);}
+/* Zone indicator LEFT */
+.zone-ind{position:absolute;top:100px;left:10px;z-index:1100;
+  background:rgba(251,191,36,.15);border:2px solid var(--yw);
+  border-radius:10px;padding:6px 10px;
+  font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;
+  color:var(--yw);display:none;flex-direction:column;align-items:center;min-width:130px;}
+.zi-title{font-size:9px;letter-spacing:2px;opacity:.8;margin-bottom:1px;}
+.zi-name{font-size:12px;max-width:140px;text-align:center;word-break:break-all;line-height:1.2;}
+.zi-bar{width:100%;height:3px;background:rgba(251,191,36,.2);border-radius:2px;margin-top:4px;overflow:hidden;}
+.zi-fill{height:100%;background:var(--yw);border-radius:2px;transition:width .5s linear;}
+/* Demo bar RIGHT */
+.demo-bar{position:absolute;top:100px;right:10px;z-index:1001;display:flex;flex-direction:column;gap:5px;}
+.demo-btn{background:rgba(22,25,34,.92);border:1px solid var(--bl2);
+  border-radius:7px;padding:7px 10px;color:var(--dm);
+  font-size:12px;font-weight:700;cursor:pointer;backdrop-filter:blur(6px);white-space:nowrap;}
+.demo-btn.on{border-color:var(--pr);color:var(--pr);}
+/* Settings panel */
+.ovl{position:absolute;inset:0;z-index:1400;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);}
+.sp{position:absolute;bottom:0;left:0;right:0;z-index:1500;
+  background:var(--sf);border-top:1px solid var(--bl2);
+  border-radius:18px 18px 0 0;padding:16px 16px 26px;
+  transform:translateY(100%);transition:transform .3s ease;}
+.sp.open{transform:translateY(0);}
+.sp-hnd{width:36px;height:4px;background:var(--bl2);border-radius:2px;margin:0 auto 14px;}
+.sp h3{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;
+  letter-spacing:2px;color:var(--pr);margin-bottom:14px;}
+.th-row{display:flex;gap:8px;margin-bottom:14px;}
+.th-opt{flex:1;padding:9px;border-radius:8px;border:1.5px solid var(--bl2);
+  background:var(--sf2);color:var(--dm);font-size:13px;font-weight:700;cursor:pointer;text-align:center;}
+.th-opt.active{border-color:var(--pr);color:var(--pr);background:var(--pg);}
+.sr{margin-bottom:14px;}
+.sr label{font-size:10px;color:var(--dm);font-weight:700;letter-spacing:2px;
+  display:flex;justify-content:space-between;margin-bottom:6px;text-transform:uppercase;}
+.sr label strong{font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800;color:var(--tx);letter-spacing:0;}
+.sr input[type=range]{width:100%;accent-color:var(--pr);cursor:pointer;}
+/* Bottom panel */
+.btm{position:absolute;bottom:0;left:0;right:0;z-index:1000;
+  background:rgba(13,15,20,.95);backdrop-filter:blur(12px);
+  border-top:1px solid var(--bl2);padding:8px 10px 12px;}
+.stats-row{display:flex;gap:5px;margin-bottom:7px;}
+.chip{flex:1;display:flex;flex-direction:column;align-items:center;
+  background:var(--sf2);border:1px solid var(--bl2);border-radius:9px;padding:6px 3px;}
+.chip .cn{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;line-height:1;}
+.chip .cl{font-size:9px;color:var(--dm);margin-top:2px;}
+.btns-row{display:flex;gap:6px;}
+/* Facility long-press */
+.fac-btn{flex:1;padding:10px;border-radius:10px;border:none;
+  background:linear-gradient(135deg,#2563EB,#1D4ED8);color:white;cursor:pointer;
+  font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:900;
+  letter-spacing:1px;display:flex;flex-direction:column;align-items:center;gap:1px;
+  position:relative;overflow:hidden;user-select:none;-webkit-user-select:none;}
+.fac-btn.urgent{background:linear-gradient(135deg,#DC2626,#B91C1C);}
+.fac-hint{font-size:9px;opacity:.7;font-family:'Noto Sans JP',sans-serif;font-weight:400;}
+.fac-track{position:absolute;bottom:0;left:0;right:0;height:4px;background:rgba(255,255,255,.15);}
+.fac-fill{height:100%;background:rgba(255,255,255,.8);width:0%;border-radius:0;}
+.fac-fill.go{transition:width 1.5s linear;}
+.comp-btn{padding:10px 12px;border-radius:10px;border:1.5px solid rgba(34,197,94,.4);
+  background:rgba(34,197,94,.12);color:var(--gn);cursor:pointer;
+  font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:900;
+  letter-spacing:1px;white-space:nowrap;}
+/* History */
+.slide{position:absolute;bottom:0;left:0;right:0;z-index:1500;
+  background:var(--sf);border-top:1px solid var(--bl2);
+  border-radius:18px 18px 0 0;padding:10px 0 0;
+  transform:translateY(100%);transition:transform .3s ease;
+  max-height:80vh;display:flex;flex-direction:column;}
+.slide.open{transform:translateY(0);}
+.sl-top{padding:0 14px 10px;display:flex;align-items:center;border-bottom:1px solid var(--bl2);flex-shrink:0;}
+.sl-top h3{font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:800;letter-spacing:2px;flex:1;}
+.sl-top button{background:none;border:none;color:var(--dm);font-size:20px;cursor:pointer;}
+.sl-body{overflow-y:auto;padding:10px 12px 18px;flex:1;}
+.h-empty{text-align:center;color:var(--dm);font-size:13px;padding:28px 0;}
+.h-run{background:var(--sf2);border:1px solid var(--bl2);border-radius:10px;margin-bottom:9px;overflow:hidden;}
+.h-run.act{border-color:rgba(251,191,36,.4);}
+.h-hd{padding:9px 12px;display:flex;align-items:center;gap:7px;border-bottom:1px solid var(--bl2);background:var(--sf3);}
+.h-lbl{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;}
+.h-tb{padding:2px 7px;border-radius:5px;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;}
+.h-tb.t1{background:rgba(239,68,68,.15);color:var(--rd);}
+.h-tb.t2{background:rgba(59,130,246,.15);color:var(--bl);}
+.h-st{font-size:11px;color:var(--dm);margin-left:auto;}
+.h-body{padding:6px 0;}
+.h-pt{display:flex;align-items:center;padding:5px 12px;gap:7px;border-bottom:1px solid rgba(255,255,255,.04);}
+.h-pt:last-child{border-bottom:none;}
+.h-ptnm{flex:1;font-size:12px;}
+.h-pttm{font-size:11px;color:var(--dm);font-family:'Barlow Condensed',sans-serif;font-weight:700;}
+.h-fac{display:flex;align-items:center;padding:6px 12px;gap:7px;background:rgba(37,99,235,.1);border-top:1px solid rgba(37,99,235,.2);}
+.h-nopt{padding:8px 12px;font-size:12px;color:var(--dm);}
+/* Completion */
+.cdlg{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(.9);
+  z-index:1600;width:88%;max-width:340px;max-height:72vh;
+  background:var(--sf);border:1px solid var(--bl2);
+  border-radius:16px;box-shadow:0 16px 64px rgba(0,0,0,.7);
+  display:flex;flex-direction:column;opacity:0;pointer-events:none;transition:all .25s;}
+.cdlg.open{transform:translate(-50%,-50%) scale(1);opacity:1;pointer-events:all;}
+.cd-hd{padding:18px 18px 12px;text-align:center;border-bottom:1px solid var(--bl2);}
+.cd-hd .ci{font-size:38px;margin-bottom:7px;}
+.cd-hd .ct{font-family:'Barlow Condensed',sans-serif;font-size:21px;font-weight:900;letter-spacing:1px;}
+.cd-hd .cc{font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:900;margin-top:4px;}
+.cc.ok{color:var(--gn);}
+.cc.ng{color:var(--rd);}
+.cd-body{flex:1;overflow-y:auto;padding:10px 16px;}
+.miss-ttl{font-size:10px;font-weight:700;letter-spacing:2px;color:var(--rd);text-transform:uppercase;margin-bottom:7px;}
+.miss-item{display:flex;align-items:center;gap:7px;padding:7px 0;border-bottom:1px solid var(--bl2);}
+.miss-item:last-child{border-bottom:none;}
+.miss-tb{padding:2px 6px;border-radius:4px;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;}
+.miss-tb.t1{background:rgba(239,68,68,.2);color:var(--rd);}
+.miss-tb.t2{background:rgba(59,130,246,.2);color:var(--bl);}
+.cd-foot{padding:10px 16px 16px;flex-shrink:0;}
+.cd-foot button{width:100%;padding:11px;border-radius:10px;border:1px solid var(--bl2);
+  background:var(--sf2);color:var(--tx);font-size:15px;font-weight:700;cursor:pointer;}
+/* Google Maps InfoWindow overrides */
+.gm-style .gm-style-iw-c{background:var(--sf2)!important;border:1px solid var(--bl2)!important;border-radius:11px!important;box-shadow:0 8px 32px rgba(0,0,0,.6)!important;padding:0!important;max-width:240px!important;}
+.gm-style .gm-style-iw-d{overflow:hidden!important;padding:11px 15px!important;}
+.gm-style .gm-style-iw-tc::after{background:var(--sf2)!important;}
+.gm-style-iw-chr{position:absolute;top:6px;right:6px;}
+.gm-style-iw-ch{display:none;}
+button.gm-ui-hover-effect{opacity:.6!important;top:4px!important;right:4px!important;}
+button.gm-ui-hover-effect img{filter:invert(1)!important;}
+.pu-nm{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;margin-bottom:3px;color:var(--tx);}
+.pu-meta{font-size:12px;color:var(--dm);margin-bottom:9px;}
+.pu-st{font-size:13px;font-weight:700;margin-bottom:8px;}
+.pu-btn{width:100%;padding:8px;border-radius:7px;border:none;background:var(--pr);
+  color:white;font-weight:700;font-size:13px;cursor:pointer;font-family:'Noto Sans JP',sans-serif;}
+.pu-btn:disabled{background:var(--sf3);color:var(--dm);cursor:default;}
+</style>
+</head>
+<body>
+<div id="offline-banner">📡 オフライン中 — データは自動保存されています</div>
+<div id="toast" style="display:none"></div>
+
+<!-- ═══ CRASH RECOVERY ═══ -->
+<div class="recovery-overlay hidden" id="recovery-overlay">
+  <div class="recovery-box">
+    <h2>⚠️ セッション復元</h2>
+    <p>前回の収集セッションが検出されました。続きから再開しますか？</p>
+    <div class="rec-info" id="rec-info"></div>
+    <div class="rec-btns">
+      <button class="rec-btn-y" onclick="restoreSession()">▶ 続きから再開</button>
+      <button class="rec-btn-n" onclick="discardSession()">✕ 破棄する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ DATA PANEL ═══ -->
+<div id="data-panel" class="hidden">
+  <div class="dp-hd">
+    <button onclick="closeDataPanel()">←</button>
+    <h2>データ管理</h2>
+  </div>
+  <div class="dp-body">
+    <div class="dp-section">
+      <h3>📊 統計</h3>
+      <div class="dp-row">
+        <div class="dp-card"><div class="dc-num" id="dp-total-runs" style="color:var(--bl)">0</div><div class="dc-lbl">総ラン数</div></div>
+        <div class="dp-card"><div class="dc-num" id="dp-total-pts" style="color:var(--gn)">0</div><div class="dc-lbl">総収集数</div></div>
+        <div class="dp-card"><div class="dc-num" id="dp-total-fac" style="color:var(--or)">0</div><div class="dc-lbl">処理場回数</div></div>
+      </div>
+    </div>
+    <div class="dp-section">
+      <h3>📥 エクスポート</h3>
+      <button class="dp-export-btn green" onclick="exportHistory()">📋 収集履歴をダウンロード (JSON)</button>
+      <button class="dp-export-btn blue" onclick="exportGPSLog()">📍 GPSログをダウンロード (JSON)</button>
+      <button class="dp-export-btn orange" onclick="exportPoints()">📌 ポイントデータをダウンロード (JSON)</button>
+      <button class="dp-export-btn" onclick="exportAll()">💾 全データをダウンロード (JSON)</button>
+    </div>
+    <div class="dp-section">
+      <h3>📤 インポート</h3>
+      <button class="dp-export-btn" onclick="document.getElementById('import-file').click()">📂 データを読み込む (JSON)</button>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+    </div>
+    <div class="dp-section">
+      <h3>🗑️ データ削除</h3>
+      <button class="dp-export-btn red" onclick="clearHistory()">履歴をクリア</button>
+      <button class="dp-export-btn red" onclick="clearAll()">全データをリセット</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SELECT ═══ -->
+<div id="sel" class="screen">
+  <div class="sel-top">
+    <div class="sel-title-row">
+      <span class="truck-icon">🚛</span>
+      <div><h1>収集ナビ</h1><p>収集管理システム</p></div>
+      <button class="mgr-btn" onclick="openMgr()">⚙ 管理</button>
+    </div>
+  </div>
+  <div class="sel-controls">
+    <div class="sg">
+      <label>車両番号</label>
+      <div class="veh-wrap">
+        <select class="veh-sel" id="veh-dd" onchange="onVehChange()">
+          <option value="">-- 車両を選択 --</option>
+        </select>
+        <span class="veh-chev">▼</span>
+      </div>
+    </div>
+    <div class="sg">
+      <label>ごみ種別</label>
+      <div class="waste-toggle">
+        <button class="waste-btn kan" id="w-kan" onclick="selWaste('kan')">🔥 可燃ごみ</button>
+        <button class="waste-btn oo"  id="w-oo"  onclick="selWaste('oo')">📦 大型可燃</button>
+      </div>
+    </div>
+    <div class="sg hidden" id="day-sg">
+      <label>収集曜日</label>
+      <div class="day-row" id="day-grid"></div>
+    </div>
+  </div>
+  <div class="preview-wrap">
+    <div id="preview-map"></div>
+    <div class="preview-ph" id="prev-ph"><span class="phi">🗺️</span><p>車両・種別を選択するとルートが表示されます</p></div>
+    <div class="preview-badge" id="prev-badge" style="display:none"></div>
+    <button class="theme-btn" id="theme-prev" onclick="toggleTheme()">🌙 ダーク</button>
+  </div>
+  <div class="sel-foot">
+    <button class="start-btn" id="start-btn" onclick="startApp()">▶ 収集開始</button>
+    <button class="data-btn" onclick="openDataPanel()" title="データ管理">📊</button>
+  </div>
+</div>
+
+<!-- ═══ MANAGER ═══ -->
+<div id="mgr" class="screen hidden">
+  <div class="mgr-hd">
+    <button onclick="closeMgr()">←</button>
+    <h2>管理</h2>
+  </div>
+  <div class="mgr-tabs">
+    <button class="mgr-tab active" id="tab-v" onclick="mgrTab('v')">🚛 車両管理</button>
+    <button class="mgr-tab" id="tab-p" onclick="mgrTab('p')">📍 ポイント管理</button>
+  </div>
+  <div id="tab-v-body" class="mgr-body">
+    <div id="veh-list"></div>
+    <div id="add-veh-f" style="display:none" class="add-veh-form">
+      <input type="text" id="new-veh-nm" placeholder="例：車両07" maxlength="10">
+      <div class="frow">
+        <button class="btn-c" onclick="hideAddVeh()">キャンセル</button>
+        <button class="btn-s" onclick="doAddVeh()">追加</button>
+      </div>
+    </div>
+    <button class="add-btn" id="show-add-veh" onclick="showAddVeh()">＋ 車両を追加</button>
+  </div>
+  <div id="tab-p-body" class="mgr-body hidden">
+    <div class="pt-nav">
+      <div class="pt-veh-row" id="pt-veh-row"></div>
+      <div class="mgr-waste-row">
+        <button class="mgr-wbtn kan active" id="mgr-w-kan" onclick="mgrWaste('kan')">🔥 可燃ごみ</button>
+        <button class="mgr-wbtn oo" id="mgr-w-oo" onclick="mgrWaste('oo')">📦 大型可燃</button>
+      </div>
+      <div class="mgr-day-row hidden" id="mgr-day-row"></div>
+    </div>
+    <div class="bulk-toolbar" id="bulk-toolbar">
+      <button class="bulk-toggle" id="bulk-toggle-btn" onclick="toggleBulk()">一括編集</button>
+      <button class="bulk-selall" id="bulk-selall" onclick="selectAll()">全選択</button>
+      <button class="bulk-c1b" id="bulk-c1b" onclick="bulkCycle(1)">1台目へ</button>
+      <button class="bulk-c2b" id="bulk-c2b" onclick="bulkCycle(2)">2台目へ</button>
+      <button class="bulk-del" id="bulk-del-btn" onclick="bulkDelete()">🗑️ 削除</button>
+      <span class="bulk-count" id="bulk-count"></span>
+    </div>
+    <div id="pt-list" style="flex:1;overflow-y:auto;"></div>
+    <button class="add-btn" onclick="openPtForm(null)" style="flex-shrink:0;">＋ ポイントを追加</button>
+  </div>
+  <div id="pt-form-panel" class="hidden">
+    <div class="pf-hd">
+      <h3 id="pf-title">ポイント追加</h3>
+      <button onclick="closePtForm()">✕</button>
+    </div>
+    <div id="picker-map"></div>
+    <div class="picker-hint">📍 地図をタップ or ピンをドラッグして場所を選択</div>
+    <div class="pf-fields">
+      <span class="pf-lbl">ポイント名</span>
+      <input type="text" id="pt-nm-inp" placeholder="例：中川町3丁目 1" maxlength="24">
+      <div id="geo-hint" style="font-size:11px;color:var(--dm);padding:3px 0;"></div>
+      <span class="pf-lbl">何台目</span>
+      <div class="cyc-row">
+        <button class="cyc-btn c1 active" id="cyc1" onclick="pickCyc(1)">1台目</button>
+        <button class="cyc-btn c2" id="cyc2" onclick="pickCyc(2)">2台目</button>
+      </div>
+      <div class="pt-coord" id="pt-coord">📍 位置: 未選択</div>
+      <div class="pf-save-row">
+        <button class="btn-c" onclick="closePtForm()">キャンセル</button>
+        <button class="btn-s" onclick="savePt()">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MAP SCREEN ═══ -->
+<div id="map-screen" class="hidden" style="position:absolute;inset:0;">
+  <div id="map"></div>
+  <!-- Mode selection overlay -->
+  <div class="mode-overlay" id="mode-overlay">
+    <h2>🚛 収集モードを選択</h2>
+    <div class="start-info" id="mode-info">出発準備完了<br>モードを選択してください</div>
+    <button class="mode-real-btn" onclick="startRealMode()">📍 GPS収集開始</button>
+    <button class="mode-demo-btn" onclick="startDemoMode()">▶ デモ走行</button>
+  </div>
+  <!-- Top bar -->
+  <div class="top-bar">
+    <span class="badge bv" id="t-veh"></span>
+    <span class="badge bd" id="t-day"></span>
+    <span class="badge" id="t-truck">1台目</span>
+    <span class="badge" id="t-waste"></span>
+    <span class="mode-badge" id="t-mode" style="display:none"></span>
+    <div class="top-sp"></div>
+    <span class="gps-badge gps-search" id="gps-badge" style="display:none">GPS</span>
+    <button class="icon-btn" onclick="toggleThemeMap()" id="theme-map">🌙</button>
+    <button class="icon-btn" onclick="openHist()">📋</button>
+    <button class="icon-btn" onclick="openSP()">⚙️</button>
+    <button class="icon-btn" onclick="endRoute()">✕</button>
+  </div>
+  <!-- Zone indicator LEFT -->
+  <div class="zone-ind" id="zone-ind">
+    <span class="zi-title">停車確認中</span>
+    <span class="zi-name" id="zi-nm">-</span>
+    <div class="zi-bar"><div class="zi-fill" id="zi-fill" style="width:0%"></div></div>
+  </div>
+  <!-- Demo controls RIGHT -->
+  <div class="demo-bar" id="demo-bar" style="display:none">
+    <button class="demo-btn on" id="sim-btn" onclick="toggleSim()">⏹ 停止</button>
+    <button class="demo-btn" onclick="centerMe()">📍 現在地</button>
+  </div>
+  <!-- Real GPS controls RIGHT -->
+  <div class="demo-bar" id="real-bar" style="display:none">
+    <button class="demo-btn" onclick="centerMe()">📍 現在地</button>
+  </div>
+  <!-- Settings -->
+  <div class="ovl hidden" id="sp-ovl" onclick="closeSP()"></div>
+  <div class="sp" id="sp-panel">
+    <div class="sp-hnd"></div>
+    <h3>⚙ 設定</h3>
+    <div class="th-row">
+      <button class="th-opt" id="th-dark" onclick="setTheme('dark')">🌙 ダーク</button>
+      <button class="th-opt" id="th-light" onclick="setTheme('light')">☀️ ライト</button>
+    </div>
+    <div class="sr">
+      <label>収集判定距離 <strong id="r-val">20m</strong></label>
+      <input type="range" id="r-sl" min="10" max="50" value="20" oninput="updSettings()">
+    </div>
+    <div class="sr">
+      <label>停車判定時間 <strong id="s-val">5秒</strong></label>
+      <input type="range" id="s-sl" min="3" max="30" value="5" oninput="updSettings()">
+    </div>
+    <div class="sr">
+      <label>GPS精度フィルター <strong id="acc-val">30m</strong></label>
+      <input type="range" id="acc-sl" min="10" max="100" value="30" oninput="updSettings()">
+    </div>
+  </div>
+  <!-- Bottom panel -->
+  <div class="btm">
+    <div class="stats-row">
+      <div class="chip"><span class="cn" id="sc-col" style="color:var(--gn)">0</span><span class="cl">収集済</span></div>
+      <div class="chip"><span class="cn" id="sc-pen" style="color:var(--rd)">0</span><span class="cl">残り</span></div>
+      <div class="chip"><span class="cn" id="sc-tot" style="color:var(--md)">0</span><span class="cl">合計</span></div>
+      <div class="chip"><span class="cn" id="sc-fac" style="color:var(--bl)">0</span><span class="cl">処理場</span></div>
+    </div>
+    <div class="btns-row">
+      <button class="fac-btn" id="fac-btn"
+        onmousedown="facStart()" onmouseup="facEnd()" onmouseleave="facEnd()"
+        ontouchstart="facStart(event)" ontouchend="facEnd()" ontouchcancel="facEnd()">
+        <span style="font-size:16px;font-weight:900">🏭 処理場へ</span>
+        <span class="fac-hint">長押しで実行</span>
+        <div class="fac-track"><div class="fac-fill" id="fac-fill"></div></div>
+      </button>
+      <button class="comp-btn" onclick="openComp()">🏁 完了確認</button>
+    </div>
+  </div>
+  <!-- History -->
+  <div class="ovl hidden" id="hist-ovl" onclick="closeHist()"></div>
+  <div class="slide" id="hist-panel">
+    <div class="sp-hnd"></div>
+    <div class="sl-top"><h3>📋 収集履歴</h3><button onclick="closeHist()">✕</button></div>
+    <div class="sl-body" id="hist-body"></div>
+  </div>
+  <!-- Completion -->
+  <div class="ovl hidden" id="comp-ovl" onclick="closeComp()"></div>
+  <div class="cdlg" id="comp-dlg">
+    <div class="cd-hd" id="cd-hd"></div>
+    <div class="cd-body" id="cd-body"></div>
+    <div class="cd-foot"><button onclick="closeComp()">閉じる</button></div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════
+//  CONSTANTS
+// ════════════════════════════════════════════════════════
+const COMPANY = { lat:34.8476, lng:135.6007, name:'北摂衛生株式会社' }; // 高槻市
+const FACILITY = { lat:34.8250, lng:135.5940, name:'ごみ処理場' };
+const KAN_DAYS = ['月','火','木','金'];
+const DARK_STYLE=[
+  {elementType:'geometry',stylers:[{color:'#212121'}]},
+  {elementType:'labels.icon',stylers:[{visibility:'off'}]},
+  {elementType:'labels.text.fill',stylers:[{color:'#757575'}]},
+  {elementType:'labels.text.stroke',stylers:[{color:'#212121'}]},
+  {featureType:'administrative',elementType:'geometry',stylers:[{color:'#757575'}]},
+  {featureType:'administrative.country',elementType:'labels.text.fill',stylers:[{color:'#9e9e9e'}]},
+  {featureType:'administrative.locality',elementType:'labels.text.fill',stylers:[{color:'#bdbdbd'}]},
+  {featureType:'poi',elementType:'labels.text.fill',stylers:[{color:'#757575'}]},
+  {featureType:'poi.park',elementType:'geometry',stylers:[{color:'#181818'}]},
+  {featureType:'poi.park',elementType:'labels.text.fill',stylers:[{color:'#616161'}]},
+  {featureType:'road',elementType:'geometry.fill',stylers:[{color:'#2c2c2c'}]},
+  {featureType:'road',elementType:'labels.text.fill',stylers:[{color:'#8a8a8a'}]},
+  {featureType:'road.arterial',elementType:'geometry',stylers:[{color:'#373737'}]},
+  {featureType:'road.highway',elementType:'geometry',stylers:[{color:'#3c3c3c'}]},
+  {featureType:'road.local',elementType:'labels.text.fill',stylers:[{color:'#616161'}]},
+  {featureType:'transit',elementType:'labels.text.fill',stylers:[{color:'#757575'}]},
+  {featureType:'water',elementType:'geometry',stylers:[{color:'#000000'}]},
+  {featureType:'water',elementType:'labels.text.fill',stylers:[{color:'#3d3d3d'}]},
+];
+const STORAGE_KEYS = {
+  DB:'navi_db_v2', SESSION:'navi_session_v2',
+  HISTORY:'navi_history_v2', GPS:'navi_gps_v2', SETTINGS:'navi_settings_v2'
+};
+
+// ════════════════════════════════════════════════════════
+//  GPS KALMAN FILTER
+// ════════════════════════════════════════════════════════
+class KalmanPos {
+  constructor(){ this.Rlat=new KF(); this.Rlng=new KF(); }
+  filter(lat,lng){ return { lat:this.Rlat.filter(lat), lng:this.Rlng.filter(lng) }; }
+  reset(){ this.Rlat=new KF(); this.Rlng=new KF(); }
+}
+class KF {
+  constructor(){ this.R=0.00001; this.Q=0.00001; this.x=null; this.p=1; }
+  filter(z){
+    if(this.x===null){ this.x=z; return z; }
+    const pp=this.p+this.Q;
+    const K=pp/(pp+this.R);
+    this.x=this.x+K*(z-this.x);
+    this.p=(1-K)*pp;
+    return this.x;
+  }
+}
+const gpsFilter = new KalmanPos();
+
+// ════════════════════════════════════════════════════════
+//  STORAGE MODULE
+// ════════════════════════════════════════════════════════
+const Store = {
+  save(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)); return true; }
+    catch(e){ console.warn('Storage save failed:', e); return false; }
+  },
+  load(key, def=null) {
+    try { const v=localStorage.getItem(key); return v?JSON.parse(v):def; }
+    catch(e){ return def; }
+  },
+  del(key){ try{ localStorage.removeItem(key); }catch(e){} },
+  saveDB() { Store.save(STORAGE_KEYS.DB, { v:DB.vehicles, p:DB.pts, nv:DB.nextVid, np:DB.nextPid }); },
+  loadDB() {
+    const d=Store.load(STORAGE_KEYS.DB);
+    if(d){ DB.vehicles=d.v||[]; DB.pts=d.p||{}; DB.nextVid=d.nv||7; DB.nextPid=d.np||2000; return true; }
+    return false;
+  },
+  saveSession(s) { Store.save(STORAGE_KEYS.SESSION, s); },
+  loadSession() { return Store.load(STORAGE_KEYS.SESSION); },
+  delSession() { Store.del(STORAGE_KEYS.SESSION); },
+  saveHistory(h) { Store.save(STORAGE_KEYS.HISTORY, h); },
+  loadHistory() { return Store.load(STORAGE_KEYS.HISTORY, []); },
+  appendGPS(coords) {
+    try {
+      const existing = Store.load(STORAGE_KEYS.GPS, []);
+      existing.push(...coords);
+      // Keep last 50000 points max
+      const trimmed = existing.length>50000 ? existing.slice(-50000) : existing;
+      Store.save(STORAGE_KEYS.GPS, trimmed);
+    } catch(e){}
+  },
+  loadGPS() { return Store.load(STORAGE_KEYS.GPS, []); },
+  saveSettings(s) { Store.save(STORAGE_KEYS.SETTINGS, s); },
+  loadSettings() { return Store.load(STORAGE_KEYS.SETTINGS, { radius:20, stopTime:5, accThresh:30, theme:'dark' }); },
+};
+
+// Auto-save GPS buffer every 30 seconds
+let gpsBuf = [];
+setInterval(()=>{ if(gpsBuf.length){ Store.appendGPS(gpsBuf); gpsBuf=[]; } }, 30000);
+
+// Auto-save session every 30 seconds during active run
+let sessionSaveTmr = null;
+function startSessionAutoSave(){ sessionSaveTmr = setInterval(saveSession, 30000); }
+function stopSessionAutoSave(){ clearInterval(sessionSaveTmr); sessionSaveTmr=null; }
+function saveSession(){
+  if(!S.vehicleId) return;
+  Store.saveSession({
+    vehicleId:S.vehicleId, vehicleName:S.vehicleName, day:S.day, wasteType:S.wasteType,
+    truckNum:S.truckNum, facilityVisits:S.facilityVisits,
+    points:S.points.map(p=>({id:p.id,status:p.status})),
+    runHistory:S.runHistory, activeRun:S.activeRun,
+    savedAt:Date.now()
+  });
+}
+
+// ════════════════════════════════════════════════════════
+//  DB
+// ════════════════════════════════════════════════════════
+const DB = { nextVid:7, nextPid:2000, vehicles:[], pts:{} };
+
+function dbInit() {
+  if(Store.loadDB()) return; // load from storage
+  // Default data
+  const vnames=['車両01','車両02','車両03','車両04','車両05','車両06'];
+  const kBases={
+    '月':{ lat:COMPANY.lat+0.004, lng:COMPANY.lng+0.001 },
+    '火':{ lat:COMPANY.lat+0.003, lng:COMPANY.lng+0.005 },
+    '木':{ lat:COMPANY.lat+0.005, lng:COMPANY.lng-0.001 },
+    '金':{ lat:COMPANY.lat-0.001, lng:COMPANY.lng+0.003 },
+  };
+  vnames.forEach((nm,vi)=>{
+    const vid=vi+1;
+    DB.vehicles.push({id:vid,name:nm});
+    const kan={};
+    KAN_DAYS.forEach(d=>{
+      const b=kBases[d]; const pts=[];
+      for(let i=0;i<8;i++){
+        pts.push({ id:DB.nextPid++, name:`中川町${(i%4)+1}丁目 ${i+1}`, cycle:i<4?1:2,
+          lat:b.lat+(i%4)*0.0008+vi*0.00040, lng:b.lng+Math.floor(i/4)*0.0012+vi*0.00030 });
+      }
+      kan[d]=pts;
+    });
+    const oo=[];
+    for(let i=0;i<6;i++){
+      oo.push({ id:DB.nextPid++, name:`大型集積所 ${i+1}`, cycle:i<3?1:2,
+        lat:COMPANY.lat+0.006+(i%3)*0.0009+vi*0.00040, lng:COMPANY.lng+0.002+Math.floor(i/3)*0.0011+vi*0.00030 });
+    }
+    DB.pts[vid]={kan,oo};
+  });
+  Store.saveDB();
+}
+dbInit();
+
+// ════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════
+let S = {
+  vehicleId:null,vehicleName:null,day:null,wasteType:null,lastVid:null,
+  points:[],currentPos:null,routeCoords:[],
+  truckNum:1,facilityVisits:0,
+  settings:Store.loadSettings(),
+  theme:'dark',
+  prox:{},posHistory:[],
+  map:null,markers:{},route:null,posMarker:null,infoWindow:null,watchId:null,
+  prevMap:null,prevLayers:[],
+  pickerMap:null,pickerMarker:null,
+  pickerLat:COMPANY.lat,pickerLng:COMPANY.lng,pickerCycle:1,editingPid:null,
+  pickerLastLat:null,pickerLastLng:null,
+  mgrVid:null,mgrWaste:'kan',mgrDay:'月',
+  bulkMode:false,selPids:new Set(),
+  runHistory:[],activeRun:null,
+  allHistory:Store.loadHistory(),
+  gpsLog:[],
+  sim:false,simIdx:0,simPath:[],simTmr:null,
+  mode:null, // 'real' or 'demo'
+  gpsAccuracy:null,
+};
+S.theme = S.settings.theme||'dark';
+
+// ════════════════════════════════════════════════════════
+//  OFFLINE / ONLINE DETECTION
+// ════════════════════════════════════════════════════════
+function updOnlineStatus(){
+  const banner=document.getElementById('offline-banner');
+  banner.style.display=navigator.onLine?'none':'block';
+}
+window.addEventListener('online', updOnlineStatus);
+window.addEventListener('offline', updOnlineStatus);
+updOnlineStatus();
+
+// ════════════════════════════════════════════════════════
+//  CRASH RECOVERY CHECK
+// ════════════════════════════════════════════════════════
+(function checkCrashRecovery(){
+  const saved=Store.loadSession();
+  if(!saved||!saved.vehicleId) return;
+  const age=Date.now()-saved.savedAt;
+  if(age>86400000) { Store.delSession(); return; } // older than 24h, discard
+  const veh=DB.vehicles.find(v=>v.id===saved.vehicleId);
+  if(!veh) { Store.delSession(); return; }
+  const info=document.getElementById('rec-info');
+  const ageMin=Math.round(age/60000);
+  info.innerHTML=`
+    <div>車両: <span>${veh.name}</span></div>
+    <div>種別: <span>${saved.wasteType==='kan'?`🔥 可燃 ${saved.day}曜日`:'📦 大型可燃'}</span></div>
+    <div>ラン数: <span>${(saved.runHistory||[]).length}ラン</span></div>
+    <div>保存: <span>${ageMin}分前</span></div>
+  `;
+  document.getElementById('recovery-overlay').classList.remove('hidden');
+  // Store session for restoration
+  window._savedSession=saved;
+})();
+
+function restoreSession(){
+  const saved=window._savedSession;
+  if(!saved) return;
+  document.getElementById('recovery-overlay').classList.add('hidden');
+  S.vehicleId=saved.vehicleId;
+  S.vehicleName=DB.vehicles.find(v=>v.id===saved.vehicleId)?.name;
+  S.day=saved.day; S.wasteType=saved.wasteType;
+  S.truckNum=saved.truckNum||1; S.facilityVisits=saved.facilityVisits||0;
+  S.runHistory=saved.runHistory||[];
+  S.activeRun=saved.activeRun||null;
+  S.lastVid=saved.vehicleId;
+  // Restore points
+  const rawPts=getSessionPtsById(saved.vehicleId,saved.wasteType,saved.day);
+  S.points=rawPts.map(p=>{
+    const st=(saved.points||[]).find(x=>x.id===p.id);
+    return {...p, status:st?st.status:'pending'};
+  });
+  computeClusters();
+  document.getElementById('sel').classList.add('hidden');
+  document.getElementById('map-screen').classList.remove('hidden');
+  setTimeout(initMap,50);
+  startSessionAutoSave();
+}
+function discardSession(){
+  Store.delSession();
+  document.getElementById('recovery-overlay').classList.add('hidden');
+}
+
+function getSessionPtsById(vid,wt,day){
+  const vp=DB.pts[vid]; if(!vp) return [];
+  if(wt==='oo') return vp.oo||[];
+  return (vp.kan||{})[day]||[];
+}
+
+// ════════════════════════════════════════════════════════
+//  BOOT
+// ════════════════════════════════════════════════════════
+// 位置情報の許可をページ読み込み時に先行リクエスト
+(function prefetchGPS(){
+  if(!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(
+    pos=>{ S.currentPos={lat:pos.coords.latitude,lng:pos.coords.longitude}; },
+    ()=>{},
+    {enableHighAccuracy:true,timeout:10000,maximumAge:60000}
+  );
+})();
+buildDayGrid(); buildVehDD(); initPrevMap();
+applyStoredSettings();
+
+function applyStoredSettings(){
+  const ss=S.settings;
+  document.getElementById('r-sl').value=ss.radius;
+  document.getElementById('s-sl').value=ss.stopTime;
+  document.getElementById('acc-sl').value=ss.accThresh||30;
+  document.getElementById('r-val').textContent=ss.radius+'m';
+  document.getElementById('s-val').textContent=ss.stopTime+'秒';
+  document.getElementById('acc-val').textContent=(ss.accThresh||30)+'m';
+  S.theme=ss.theme||'dark';
+  updThemeBtns();
+}
+
+// ════════════════════════════════════════════════════════
+//  SELECT SCREEN
+// ════════════════════════════════════════════════════════
+function buildVehDD(){
+  const sel=document.getElementById('veh-dd');
+  const cur=S.lastVid;
+  sel.innerHTML='<option value="">-- 車両を選択 --</option>';
+  DB.vehicles.forEach(v=>{
+    const o=document.createElement('option');
+    o.value=v.id; o.textContent=v.name;
+    if(v.id===cur) o.selected=true;
+    sel.appendChild(o);
+  });
+  if(cur){ S.vehicleId=cur; S.vehicleName=DB.vehicles.find(v=>v.id===cur)?.name; sel.classList.add('sel'); }
+  chkReady();
+}
+function onVehChange(){
+  const sel=document.getElementById('veh-dd');
+  const vid=+sel.value||null;
+  S.vehicleId=vid; S.vehicleName=vid?DB.vehicles.find(v=>v.id===vid)?.name:null;
+  S.lastVid=vid; sel.classList.toggle('sel',!!vid);
+  chkReady();
+  if(vid&&S.wasteType) updatePrevMap();
+}
+function buildDayGrid(){
+  const dg=document.getElementById('day-grid'); dg.innerHTML='';
+  KAN_DAYS.forEach(d=>{
+    const b=document.createElement('button');
+    b.className='sel-btn'; b.textContent=d;
+    b.onclick=()=>{ S.day=d; dg.querySelectorAll('.sel-btn').forEach(x=>x.classList.toggle('active',x===b)); chkReady(); };
+    dg.appendChild(b);
+  });
+}
+function selWaste(t){
+  S.wasteType=t;
+  document.getElementById('w-kan').classList.toggle('active',t==='kan');
+  document.getElementById('w-oo').classList.toggle('active',t==='oo');
+  document.getElementById('day-sg').classList.toggle('hidden',t!=='kan');
+  if(t!=='kan'){ S.day=null; document.querySelectorAll('#day-grid .sel-btn').forEach(b=>b.classList.remove('active')); }
+  chkReady();
+  if(S.vehicleId) updatePrevMap();
+}
+function chkReady(){
+  document.getElementById('start-btn').classList.toggle('ready',!!(S.vehicleId&&S.wasteType&&(S.wasteType==='oo'||S.day)));
+}
+
+// ── Preview map ──────────────────────────────
+function initPrevMap(){
+  S.prevMap=new google.maps.Map(document.getElementById('preview-map'),{
+    center:{lat:COMPANY.lat,lng:COMPANY.lng},zoom:14,
+    disableDefaultUI:true,gestureHandling:'greedy',
+    styles:S.theme==='dark'?DARK_STYLE:[]
+  });
+  updThemeBtns();
+}
+function updatePrevMap(){
+  if(!S.vehicleId||!S.wasteType) return;
+  if(S.wasteType==='kan'&&!S.day) return;
+  const ph=document.getElementById('prev-ph');
+  ph.classList.add('fade'); setTimeout(()=>ph.style.display='none',400);
+  google.maps.event.trigger(S.prevMap,'resize');
+  S.prevLayers.forEach(l=>l.setMap(null)); S.prevLayers=[];
+  const pts=S.wasteType==='kan'?(DB.pts[S.vehicleId]?.kan||{})[S.day]||[]:DB.pts[S.vehicleId]?.oo||[];
+  const c1=[],c2=[];
+  pts.forEach((p,idx)=>{
+    const col=p.cycle===1?'#EF4444':'#3B82F6';
+    const svg=`<svg width="22" height="27" viewBox="0 0 22 27" xmlns="http://www.w3.org/2000/svg"><path d="M11 2C6 2 2 6 2 11C2 19 11 25 11 25S20 19 20 11C20 6 16 2 11 2Z" fill="${col}" stroke="rgba(0,0,0,.35)" stroke-width="1.2"/><text x="11" y="15" text-anchor="middle" font-size="9" font-weight="800" fill="white" font-family="Arial">${idx+1}</text></svg>`;
+    const icon={url:'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg),scaledSize:new google.maps.Size(22,27),anchor:new google.maps.Point(11,25)};
+    const m=new google.maps.Marker({position:{lat:p.lat,lng:p.lng},map:S.prevMap,icon});
+    S.prevLayers.push(m);
+    (p.cycle===1?c1:c2).push({lat:p.lat,lng:p.lng});
+  });
+  const rl1=new google.maps.Polyline({path:c1,strokeColor:'#EF4444',strokeWeight:2,strokeOpacity:.5,map:S.prevMap});
+  const rl2=new google.maps.Polyline({path:c2,strokeColor:'#3B82F6',strokeWeight:2,strokeOpacity:.5,map:S.prevMap});
+  S.prevLayers.push(rl1,rl2);
+  if(pts.length>1){
+    const bounds=new google.maps.LatLngBounds();
+    pts.forEach(p=>bounds.extend({lat:p.lat,lng:p.lng}));
+    S.prevMap.fitBounds(bounds,{top:24,right:24,bottom:24,left:24});
+  }
+  const badge=document.getElementById('prev-badge');
+  badge.style.display='block';
+  const wl=S.wasteType==='kan'?`🔥 可燃 ${S.day}曜日`:'📦 大型可燃';
+  badge.innerHTML=`${wl}　<span style="color:#EF4444">●</span>1台目:${pts.filter(p=>p.cycle===1).length}　<span style="color:#3B82F6">●</span>2台目:${pts.filter(p=>p.cycle===2).length}`;
+}
+
+// ── Theme ────────────────────────────────────
+function toggleTheme(){ setTheme(S.theme==='dark'?'light':'dark'); }
+function toggleThemeMap(){ toggleTheme(); }
+function setTheme(t){
+  S.theme=t; S.settings.theme=t; Store.saveSettings(S.settings);
+  const styles=t==='dark'?DARK_STYLE:[];
+  if(S.prevMap) S.prevMap.setOptions({styles});
+  if(S.map) S.map.setOptions({styles});
+  if(S.pickerMap) S.pickerMap.setOptions({styles});
+  updThemeBtns();
+}
+function updThemeBtns(){
+  const lbl=S.theme==='dark'?'🌙 ダーク':'☀️ ライト';
+  const pb=document.getElementById('theme-prev'); if(pb) pb.textContent=lbl;
+  const mb=document.getElementById('theme-map'); if(mb) mb.textContent=S.theme==='dark'?'🌙':'☀️';
+  const td=document.getElementById('th-dark'),tl=document.getElementById('th-light');
+  if(td){ td.classList.toggle('active',S.theme==='dark'); tl.classList.toggle('active',S.theme==='light'); }
+}
+
+// ════════════════════════════════════════════════════════
+//  MANAGER
+// ════════════════════════════════════════════════════════
+function openMgr(){ document.getElementById('sel').classList.add('hidden'); document.getElementById('mgr').classList.remove('hidden'); mgrTab('v'); }
+function closeMgr(){ document.getElementById('mgr').classList.add('hidden'); document.getElementById('sel').classList.remove('hidden'); buildVehDD(); if(S.vehicleId&&S.wasteType) updatePrevMap(); Store.saveDB(); }
+function mgrTab(t){
+  document.getElementById('tab-v-body').classList.toggle('hidden',t!=='v');
+  document.getElementById('tab-p-body').classList.toggle('hidden',t!=='p');
+  document.getElementById('tab-v').classList.toggle('active',t==='v');
+  document.getElementById('tab-p').classList.toggle('active',t==='p');
+  if(t==='v') renderVehList();
+  if(t==='p'){ buildPtVehRow(); renderMgrDayRow(); renderPtList(); }
+}
+// Vehicles
+function renderVehList(){
+  const el=document.getElementById('veh-list');
+  if(!DB.vehicles.length){ el.innerHTML='<div style="color:var(--dm);text-align:center;padding:20px 0;font-size:13px;">車両がありません</div>'; return; }
+  el.innerHTML=DB.vehicles.map(v=>`<div class="veh-item" id="vi-${v.id}"><span class="veh-nm">${v.name}</span><button class="vei" onclick="editVeh(${v.id})">✏️</button><button class="vei vei4" onclick="delVeh(${v.id})">🗑️</button></div>`).join('');
+}
+function editVeh(vid){
+  const v=DB.vehicles.find(x=>x.id===vid);
+  document.getElementById(`vi-${vid}`).innerHTML=`<input type="text" class="veh-nm-inp" id="vei-${vid}" value="${v.name}" maxlength="10"><button class="vei vei3" onclick="saveVeh(${vid})">保存</button><button class="vei" onclick="renderVehList()">✕</button>`;
+  document.getElementById(`vei-${vid}`).focus();
+}
+function saveVeh(vid){
+  const val=document.getElementById(`vei-${vid}`).value.trim();
+  if(!val){ toast('名前を入力してください','w'); return; }
+  DB.vehicles.find(x=>x.id===vid).name=val; Store.saveDB(); renderVehList(); toast('✅ 保存しました','s');
+}
+function delVeh(vid){
+  if(DB.vehicles.length<=1){ toast('最低1台は必要です','w'); return; }
+  if(!confirm('この車両を削除しますか？ポイントも削除されます。')) return;
+  DB.vehicles=DB.vehicles.filter(v=>v.id!==vid); delete DB.pts[vid]; Store.saveDB(); renderVehList(); toast('🗑️ 削除しました','i');
+}
+function showAddVeh(){ document.getElementById('add-veh-f').style.display='block'; document.getElementById('show-add-veh').style.display='none'; document.getElementById('new-veh-nm').value=''; document.getElementById('new-veh-nm').focus(); }
+function hideAddVeh(){ document.getElementById('add-veh-f').style.display='none'; document.getElementById('show-add-veh').style.display='block'; }
+function doAddVeh(){
+  const nm=document.getElementById('new-veh-nm').value.trim();
+  if(!nm){ toast('車両名を入力してください','w'); return; }
+  const vid=DB.nextVid++;
+  DB.vehicles.push({id:vid,name:nm});
+  DB.pts[vid]={ kan:Object.fromEntries(KAN_DAYS.map(d=>[d,[]])), oo:[] };
+  Store.saveDB(); hideAddVeh(); renderVehList(); toast(`✅ ${nm} を追加しました`,'s');
+}
+// Point nav
+function buildPtVehRow(){
+  const el=document.getElementById('pt-veh-row');
+  if(!S.mgrVid&&DB.vehicles.length>0) S.mgrVid=DB.vehicles[0].id;
+  el.innerHTML=DB.vehicles.map(v=>`<button class="pt-vsel${S.mgrVid===v.id?' active':''}" onclick="mgrSelVeh(${v.id})">${v.name}</button>`).join('');
+}
+function mgrSelVeh(vid){ S.mgrVid=vid; buildPtVehRow(); renderPtList(); }
+function mgrWaste(t){
+  S.mgrWaste=t;
+  document.getElementById('mgr-w-kan').classList.toggle('active',t==='kan');
+  document.getElementById('mgr-w-oo').classList.toggle('active',t==='oo');
+  document.getElementById('mgr-day-row').classList.toggle('hidden',t==='oo');
+  renderPtList();
+}
+function renderMgrDayRow(){
+  const el=document.getElementById('mgr-day-row'); el.innerHTML='';
+  KAN_DAYS.forEach(d=>{
+    const b=document.createElement('button');
+    b.className='mgr-daybtn'+(S.mgrDay===d?' active':''); b.textContent=d+'曜';
+    b.onclick=()=>{ S.mgrDay=d; document.querySelectorAll('.mgr-daybtn').forEach(x=>x.classList.toggle('active',x===b)); renderPtList(); };
+    el.appendChild(b);
+  });
+}
+function getMgrPts(){ const vp=DB.pts[S.mgrVid]; if(!vp) return []; if(S.mgrWaste==='oo') return vp.oo||[]; return (vp.kan||{})[S.mgrDay]||[]; }
+function setMgrPts(arr){ if(!DB.pts[S.mgrVid]) return; if(S.mgrWaste==='oo') DB.pts[S.mgrVid].oo=arr; else DB.pts[S.mgrVid].kan[S.mgrDay]=arr; Store.saveDB(); }
+function getSessionPts(){ const vp=DB.pts[S.vehicleId]; if(!vp) return []; if(S.wasteType==='oo') return vp.oo||[]; return (vp.kan||{})[S.day]||[]; }
+function nextSerial(){ return getMgrPts().length+1; }
+// Bulk
+function toggleBulk(){
+  S.bulkMode=!S.bulkMode; S.selPids.clear();
+  document.getElementById('bulk-toggle-btn').classList.toggle('on',S.bulkMode);
+  document.getElementById('bulk-toggle-btn').textContent=S.bulkMode?'編集終了':'一括編集';
+  updBulkBar(); renderPtList();
+}
+function updBulkBar(){
+  const sh=S.bulkMode,n=S.selPids.size;
+  ['bulk-selall','bulk-del-btn','bulk-c1b','bulk-c2b','bulk-count'].forEach(id=>document.getElementById(id).style.display=sh?'':'none');
+  document.getElementById('bulk-count').textContent=n>0?`${n}件選択`:'';
+}
+function selectAll(){ getMgrPts().forEach(p=>S.selPids.add(p.id)); renderPtList(); updBulkBar(); }
+function bulkDelete(){ if(!S.selPids.size){ toast('選択してください','w'); return; } if(!confirm(`${S.selPids.size}件削除しますか？`)) return; setMgrPts(getMgrPts().filter(p=>!S.selPids.has(p.id))); S.selPids.clear(); renderPtList(); updBulkBar(); toast('🗑️ 削除しました','i'); }
+function bulkCycle(c){ if(!S.selPids.size){ toast('選択してください','w'); return; } getMgrPts().forEach(p=>{ if(S.selPids.has(p.id)) p.cycle=c; }); Store.saveDB(); S.selPids.clear(); renderPtList(); updBulkBar(); toast(`✅ ${c}台目に変更しました`,'s'); }
+function togglePtSel(pid){ if(S.selPids.has(pid)) S.selPids.delete(pid); else S.selPids.add(pid); updBulkBar(); const el=document.querySelector(`[data-pid="${pid}"] .pt-cb`); if(el) el.checked=S.selPids.has(pid); }
+// Point list
+function renderPtList(){
+  const el=document.getElementById('pt-list');
+  const pts=getMgrPts();
+  if(!pts.length){ el.innerHTML='<div style="color:var(--dm);text-align:center;padding:20px 0;font-size:13px;">ポイントがありません</div>'; el.classList.remove('bulk-mode'); return; }
+  el.classList.toggle('bulk-mode',S.bulkMode);
+  const c1=pts.filter(p=>p.cycle===1),c2=pts.filter(p=>p.cycle===2);
+  const flat=[...c1,...c2];
+  el.innerHTML=([c1.length?{t:`1台目（${c1.length}箇所）`,items:c1}:null,c2.length?{t:`2台目（${c2.length}箇所）`,items:c2}:null]).filter(Boolean).map(sec=>`<div class="pt-section">${sec.t}</div>`+sec.items.map(p=>{
+    const fi=flat.indexOf(p);
+    const chk=S.selPids.has(p.id)?'checked':'';
+    return `<div class="pt-item pt-drag-item" data-pid="${p.id}" data-idx="${fi}" ontouchstart="dragStart(event,this)" ontouchmove="dragMove(event)" ontouchend="dragEnd()" ontouchcancel="dragCancel()"><span class="drag-handle">⠿</span><input type="checkbox" class="pt-cb" ${chk} onchange="togglePtSel(${p.id})"><span class="pt-badge ${p.cycle===1?'c1':'c2'}">${p.cycle===1?'1台目':'2台目'}</span><span class="pt-nm">${p.name}</span><button class="pt-eb" onclick="openPtForm(${p.id})">✏️</button><button class="pt-db" onclick="delPt(${p.id})">🗑️</button></div>`;
+  }).join('')).join('');
+}
+function delPt(pid){ if(!confirm('このポイントを削除しますか？')) return; setMgrPts(getMgrPts().filter(p=>p.id!==pid)); renderPtList(); }
+// Drag
+const Drag={active:false,timer:null,el:null,listEl:null,allItems:null,srcIdx:null,curIdx:null,startY:0,clone:null,cloneTop:0,itemH:0,
+  start(e,el){ Drag.el=el; Drag.listEl=document.getElementById('pt-list'); Drag.startY=e.touches[0].clientY; Drag.timer=setTimeout(()=>Drag.activate(),420); },
+  activate(){ Drag.active=true; if(navigator.vibrate) navigator.vibrate(25); Drag.allItems=[...Drag.listEl.querySelectorAll('.pt-drag-item')]; Drag.srcIdx=Drag.allItems.indexOf(Drag.el); Drag.curIdx=Drag.srcIdx; Drag.itemH=Drag.el.offsetHeight+5; Drag.el.classList.add('pt-dragging'); const r=Drag.el.getBoundingClientRect(); const cl=Drag.el.cloneNode(true); cl.style.cssText=`position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;z-index:9000;pointer-events:none;box-shadow:0 8px 28px rgba(0,0,0,.5);border-radius:9px;opacity:.88;`; document.body.appendChild(cl); Drag.clone=cl; Drag.cloneTop=r.top; },
+  move(e){ if(!Drag.active) return; e.preventDefault(); const dy=e.touches[0].clientY-Drag.startY; if(Drag.clone) Drag.clone.style.top=(Drag.cloneTop+dy)+'px'; const ni=Math.max(0,Math.min(Drag.allItems.length-1,Drag.srcIdx+Math.round(dy/Drag.itemH))); if(ni!==Drag.curIdx){ Drag.curIdx=ni; Drag.allItems.forEach((item,i)=>{ if(item===Drag.el){item.style.transform='';return;} const h=Drag.itemH; if(Drag.srcIdx<Drag.curIdx&&i>Drag.srcIdx&&i<=Drag.curIdx) item.style.transform=`translateY(-${h}px)`; else if(Drag.srcIdx>Drag.curIdx&&i>=Drag.curIdx&&i<Drag.srcIdx) item.style.transform=`translateY(${h}px)`; else item.style.transform=''; }); } },
+  end(){ clearTimeout(Drag.timer); if(!Drag.active) return; Drag.active=false; if(Drag.clone){Drag.clone.remove();Drag.clone=null;} Drag.el?.classList.remove('pt-dragging'); Drag.allItems?.forEach(it=>it.style.transform=''); if(Drag.curIdx!==Drag.srcIdx){ const ids=Drag.allItems.map(it=>+it.dataset.pid); const [mv]=ids.splice(Drag.srcIdx,1); ids.splice(Drag.curIdx,0,mv); const map=Object.fromEntries(getMgrPts().map(p=>[p.id,p])); setMgrPts(ids.map(id=>map[id]).filter(Boolean)); } renderPtList(); },
+  cancel(){ clearTimeout(Drag.timer); if(Drag.active){Drag.active=false;if(Drag.clone){Drag.clone.remove();Drag.clone=null;}Drag.el?.classList.remove('pt-dragging');Drag.allItems?.forEach(it=>it.style.transform='');} }
+};
+function dragStart(e,el){if(!S.bulkMode) Drag.start(e,el);}
+function dragMove(e){Drag.move(e);}
+function dragEnd(){Drag.end();}
+function dragCancel(){Drag.cancel();}
+// Point form
+function openPtForm(pid){
+  S.editingPid=pid;
+  document.getElementById('pt-form-panel').classList.remove('hidden');
+  const n=nextSerial();
+  if(pid){
+    const p=getMgrPts().find(x=>x.id===pid);
+    document.getElementById('pf-title').textContent='ポイント編集';
+    document.getElementById('pt-nm-inp').value=p.name;
+    S.pickerCycle=p.cycle; S.pickerLat=p.lat; S.pickerLng=p.lng;
+  } else {
+    document.getElementById('pf-title').textContent='ポイント追加';
+    document.getElementById('pt-nm-inp').value='';
+    S.pickerCycle=1;
+    S.pickerLat=S.pickerLastLat!==null?S.pickerLastLat:COMPANY.lat;
+    S.pickerLng=S.pickerLastLng!==null?S.pickerLastLng:COMPANY.lng;
+  }
+  pickCyc(S.pickerCycle); updCoordDisplay(); document.getElementById('geo-hint').textContent='';
+  setTimeout(()=>{
+    if(!S.pickerMap){
+      S.pickerMap=new google.maps.Map(document.getElementById('picker-map'),{
+        center:{lat:S.pickerLat,lng:S.pickerLng},zoom:17,
+        disableDefaultUI:false,zoomControl:true,gestureHandling:'greedy',
+        styles:S.theme==='dark'?DARK_STYLE:[]
+      });
+    } else {
+      google.maps.event.trigger(S.pickerMap,'resize');
+    }
+    S.pickerMap.setCenter({lat:S.pickerLat,lng:S.pickerLng});
+    S.pickerMap.setZoom(17);
+    google.maps.event.clearListeners(S.pickerMap,'click');
+    S.pickerMap.addListener('click',e=>{ onPickerClick(e.latLng.lat(),e.latLng.lng(),n); });
+    if(S.pickerMarker) S.pickerMarker.setMap(null);
+    S.pickerMarker=new google.maps.Marker({position:{lat:S.pickerLat,lng:S.pickerLng},map:S.pickerMap,draggable:true});
+    S.pickerMarker.addListener('dragend',()=>{ const ll=S.pickerMarker.getPosition(); onPickerClick(ll.lat(),ll.lng(),n); });
+  },100);
+}
+function onPickerClick(lat,lng,serial){
+  S.pickerLat=lat; S.pickerLng=lng; S.pickerLastLat=lat; S.pickerLastLng=lng;
+  if(!S.pickerMarker){
+    S.pickerMarker=new google.maps.Marker({position:{lat,lng},map:S.pickerMap,draggable:true});
+    S.pickerMarker.addListener('dragend',()=>{ const ll=S.pickerMarker.getPosition(); onPickerClick(ll.lat(),ll.lng(),serial); });
+  } else S.pickerMarker.setPosition({lat,lng});
+  updCoordDisplay();
+  if(!S.editingPid) autoFillName(lat,lng,serial);
+}
+function closePtForm(){ document.getElementById('pt-form-panel').classList.add('hidden'); S.editingPid=null; }
+function pickCyc(n){ S.pickerCycle=n; document.getElementById('cyc1').classList.toggle('active',n===1); document.getElementById('cyc2').classList.toggle('active',n===2); }
+function updCoordDisplay(){ document.getElementById('pt-coord').textContent=`📍 ${S.pickerLat.toFixed(5)}, ${S.pickerLng.toFixed(5)}`; }
+async function autoFillName(lat,lng,serial){
+  document.getElementById('geo-hint').textContent='📡 住所取得中...';
+  try {
+    const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ja&zoom=17`);
+    const d=await r.json(); const a=d.address;
+    const place=a.neighbourhood||a.quarter||a.suburb||a.road||a.city_district||'収集ポイント';
+    document.getElementById('pt-nm-inp').value=`${place} ${serial}`;
+    document.getElementById('geo-hint').textContent=`✅ ${place}`;
+  } catch(e){
+    if(!document.getElementById('pt-nm-inp').value) document.getElementById('pt-nm-inp').value=`収集ポイント ${serial}`;
+    document.getElementById('geo-hint').textContent='（オフライン：手動で入力）';
+  }
+}
+function savePt(){
+  const nm=document.getElementById('pt-nm-inp').value.trim();
+  if(!nm){ toast('ポイント名を入力してください','w'); return; }
+  const pts=getMgrPts();
+  if(S.editingPid){ const idx=pts.findIndex(p=>p.id===S.editingPid); if(idx>=0) pts[idx]={id:S.editingPid,name:nm,cycle:S.pickerCycle,lat:S.pickerLat,lng:S.pickerLng}; }
+  else { pts.push({id:DB.nextPid++,name:nm,cycle:S.pickerCycle,lat:S.pickerLat,lng:S.pickerLng}); }
+  S.pickerLastLat=S.pickerLat; S.pickerLastLng=S.pickerLng;
+  Store.saveDB(); closePtForm(); renderPtList(); toast('✅ 保存しました','s');
+}
+
+// ════════════════════════════════════════════════════════
+//  START APP
+// ════════════════════════════════════════════════════════
+function startApp(){
+  if(!S.vehicleId||!S.wasteType||(S.wasteType==='kan'&&!S.day)) return;
+  const raw=getSessionPts();
+  S.points=raw.map(p=>({...p,status:'pending'}));
+  S.truckNum=1; S.facilityVisits=0; S.routeCoords=[];
+  S.prox={}; S.posHistory=[]; S.runHistory=[]; S.simPath=[]; S.mode=null;
+  S.activeRun={label:'ラン 1',truckNum:1,startTime:Date.now(),collected:[],routeCoords:[]};
+  gpsFilter.reset();
+  computeClusters();
+  // 位置情報の許可を先行取得
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(
+      pos=>{ S.currentPos={lat:pos.coords.latitude,lng:pos.coords.longitude}; },
+      ()=>{},
+      {enableHighAccuracy:true,timeout:10000,maximumAge:30000}
+    );
+  }
+  document.getElementById('sel').classList.add('hidden');
+  document.getElementById('map-screen').classList.remove('hidden');
+  setTimeout(initMap,50);
+}
+
+// ════════════════════════════════════════════════════════
+//  MODE SELECTION
+// ════════════════════════════════════════════════════════
+function startRealMode(){
+  S.mode='real';
+  document.getElementById('mode-overlay').classList.add('hidden');
+  document.getElementById('t-mode').textContent='📍 GPS';
+  document.getElementById('t-mode').className='mode-badge real';
+  document.getElementById('t-mode').style.display='';
+  document.getElementById('gps-badge').style.display='';
+  document.getElementById('real-bar').style.display='';
+  document.getElementById('demo-bar').style.display='none';
+  startGPS();
+  startSessionAutoSave();
+}
+function startDemoMode(){
+  S.mode='demo';
+  document.getElementById('mode-overlay').classList.add('hidden');
+  document.getElementById('t-mode').textContent='▶ デモ';
+  document.getElementById('t-mode').className='mode-badge demo';
+  document.getElementById('t-mode').style.display='';
+  document.getElementById('demo-bar').style.display='';
+  document.getElementById('real-bar').style.display='none';
+  startSim();
+}
+
+// ════════════════════════════════════════════════════════
+//  CLUSTERS
+// ════════════════════════════════════════════════════════
+function computeClusters(){
+  S.points.forEach(p=>p.clusterId=p.id);
+  for(let i=0;i<S.points.length;i++)
+    for(let j=i+1;j<S.points.length;j++)
+      if(haversine(S.points[i],S.points[j])<15){
+        const m=Math.min(S.points[i].clusterId,S.points[j].clusterId);
+        S.points[i].clusterId=m; S.points[j].clusterId=m;
+      }
+}
+function clusterMates(p){ return S.points.filter(x=>x.clusterId===p.clusterId&&x.id!==p.id&&x.status!=='collected'); }
+
+// ════════════════════════════════════════════════════════
+//  MAP
+// ════════════════════════════════════════════════════════
+function initMap(){
+  const cx=S.currentPos?S.currentPos:S.points.length>0?{lat:S.points[0].lat,lng:S.points[0].lng}:{lat:COMPANY.lat,lng:COMPANY.lng};
+  S.map=new google.maps.Map(document.getElementById('map'),{
+    center:cx,zoom:15,
+    disableDefaultUI:true,
+    zoomControl:true,
+    zoomControlOptions:{position:google.maps.ControlPosition.LEFT_TOP},
+    gestureHandling:'greedy',
+    styles:S.theme==='dark'?DARK_STYLE:[]
+  });
+  S.route=new google.maps.Polyline({path:[],strokeColor:'#FF5722',strokeWeight:4,strokeOpacity:.8,map:S.map});
+  S.markers={};
+  S.points.forEach(p=>addMarker(p));
+  updTopBar(); updStats(); updThemeBtns();
+  document.getElementById('mode-overlay').classList.remove('hidden');
+  const pts=S.points.length;
+  document.getElementById('mode-info').textContent=`${S.vehicleName}｜${S.wasteType==='kan'?`可燃 ${S.day}曜日`:'大型可燃'}｜${pts}箇所`;
+}
+function ptIcon(p){
+  const col=p.status==='collected'?'#22C55E':p.status==='in-zone'?'#FBBF24':'#EF4444';
+  const dim=(p.cycle!==S.truckNum&&p.status!=='collected')?.28:1;
+  const mates=S.points.filter(x=>x.clusterId===p.clusterId&&x.id!==p.id);
+  const cB=mates.length>0?`<rect x="24" y="2" width="12" height="12" rx="6" fill="#A78BFA"/><text x="30" y="12" text-anchor="middle" font-size="8" font-weight="800" fill="white" font-family="Arial">${mates.length+1}</text>`:'';
+  const inner=p.status==='collected'?`<text x="20" y="26" text-anchor="middle" font-size="15" fill="white">✓</text>`:`<text x="20" y="26" text-anchor="middle" font-size="13" font-weight="800" fill="white" font-family="Arial">${p.id}</text>`;
+  const svg=`<svg width="40" height="48" viewBox="0 0 40 48" xmlns="http://www.w3.org/2000/svg" opacity="${dim}"><path d="M20 4C10 4 3 11 3 20C3 32 20 46 20 46S37 32 37 20C37 11 30 4 20 4Z" fill="${col}" stroke="rgba(0,0,0,.4)" stroke-width="1.5"/>${inner}${cB}</svg>`;
+  return {url:'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg),scaledSize:new google.maps.Size(40,48),anchor:new google.maps.Point(20,46)};
+}
+function addMarker(p){
+  if(S.markers[p.id]) S.markers[p.id].setMap(null);
+  const m=new google.maps.Marker({
+    position:{lat:p.lat,lng:p.lng},map:S.map,icon:ptIcon(p),
+    zIndex:p.status==='in-zone'?500:1
+  });
+  m.addListener('click',()=>openPtPopup(p,m));
+  S.markers[p.id]=m;
+}
+function refreshMark(p){ addMarker(p); }
+function openPtPopup(p,mk){
+  if(!S.infoWindow) S.infoWindow=new google.maps.InfoWindow();
+  const sc={collected:'#22C55E','in-zone':'#FBBF24',pending:'#EF4444'}[p.status];
+  const st={collected:'✅ 収集済','in-zone':'⚡ 接近中',pending:'⏳ 未収集'}[p.status];
+  const mates=S.points.filter(x=>x.clusterId===p.clusterId&&x.id!==p.id);
+  const cn=mates.length>0?`<div style="font-size:11px;color:#A78BFA;margin-bottom:7px;">📍 クラスター ${mates.length+1}箇所</div>`:'';
+  const btn=p.status!=='collected'
+    ?`<button class="pu-btn" onclick="manualCollect(${p.id})">手動で収集済にする</button>`
+    :`<button class="pu-btn" disabled>収集済です</button>`;
+  S.infoWindow.setContent(`<div class="pu-nm">${p.name}</div><div class="pu-meta">${p.cycle===1?'1台目':'2台目'}</div><div class="pu-st" style="color:${sc}">${st}</div>${cn}${btn}`);
+  S.infoWindow.open(S.map,mk);
+}
+
+// ════════════════════════════════════════════════════════
+//  GPS (with accuracy filtering + Kalman)
+// ════════════════════════════════════════════════════════
+function startGPS(){
+  if(!navigator.geolocation){ notif('GPSが使えません。デモモードをお使いください。','w'); return; }
+  // Start with high accuracy
+  S.watchId=navigator.geolocation.watchPosition(onRawPos, onGPSError,
+    {enableHighAccuracy:true, maximumAge:1000, timeout:20000});
+  updGPSBadge('search');
+}
+function onGPSError(err){
+  const msgs={1:'位置情報の許可が必要です',2:'位置情報を取得できません',3:'GPS タイムアウト'};
+  notif(msgs[err.code]||'GPS エラー','w');
+  updGPSBadge('bad');
+}
+function onRawPos(pos){
+  const acc=pos.coords.accuracy;
+  S.gpsAccuracy=acc;
+  const thresh=S.settings.accThresh||30;
+  // Update badge
+  if(acc<=thresh) updGPSBadge('ok'); else updGPSBadge('bad');
+  // Reject low-accuracy fixes
+  if(acc>thresh*2) return; // Very bad: skip entirely
+  // Apply Kalman filter
+  const raw={lat:pos.coords.latitude, lng:pos.coords.longitude};
+  const filtered=gpsFilter.filter(raw.lat,raw.lng);
+  const t=pos.timestamp||Date.now();
+  onPos(filtered.lat,filtered.lng,t,acc);
+}
+function updGPSBadge(state){
+  const b=document.getElementById('gps-badge');
+  if(!b) return;
+  const acc=S.gpsAccuracy?Math.round(S.gpsAccuracy)+'m':'--';
+  if(state==='ok'){ b.className='gps-badge gps-ok'; b.textContent=`GPS ${acc}`; }
+  else if(state==='bad'){ b.className='gps-badge gps-bad'; b.textContent=`GPS ${acc}`; }
+  else { b.className='gps-badge gps-search'; b.textContent='GPS 取得中'; }
+}
+function onPos(lat,lng,t,acc){
+  t=t||Date.now();
+  S.posHistory.push({lat,lng,t});
+  if(S.posHistory.length>50) S.posHistory.shift();
+  gpsBuf.push({lat,lng,t,acc:acc||null});
+  if(!S.posMarker){
+    const svg=`<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="13" fill="#FF5722" stroke="white" stroke-width="3"/><circle cx="16" cy="16" r="5" fill="white"/></svg>`;
+    S.posMarker=new google.maps.Marker({
+      position:{lat,lng},map:S.map,
+      icon:{url:'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg),scaledSize:new google.maps.Size(32,32),anchor:new google.maps.Point(16,16)},
+      zIndex:2000
+    });
+  } else S.posMarker.setPosition({lat,lng});
+  const path=S.route.getPath(); path.push(new google.maps.LatLng(lat,lng));
+  S.routeCoords.push({lat,lng});
+  S.currentPos={lat,lng};
+  if(S.activeRun) S.activeRun.routeCoords.push([lat,lng]);
+  autoCollect({lat,lng},t); updZoneUI(); updStats();
+}
+
+// ════════════════════════════════════════════════════════
+//  AUTO-COLLECT
+// ════════════════════════════════════════════════════════
+function autoCollect(pos,now){
+  S.points.forEach(p=>{
+    if(p.status==='collected') return;
+    const d=haversine(pos,p);
+    if(d<S.settings.radius){
+      if(!S.prox[p.id]){ S.prox[p.id]={enteredAt:now}; p.status='in-zone'; refreshMark(p); }
+      else if(S.prox[p.id].leftAt) delete S.prox[p.id].leftAt;
+      if(now-S.prox[p.id].enteredAt>=S.settings.stopTime*1000&&isStationary(now)) collectPt(p);
+    } else if(S.prox[p.id]){
+      if(!S.prox[p.id].leftAt) S.prox[p.id].leftAt=now;
+      if(now-S.prox[p.id].leftAt>4000){ delete S.prox[p.id]; if(p.status==='in-zone'){ p.status='pending'; refreshMark(p); } }
+    }
+  });
+}
+function isStationary(now){
+  const recent=S.posHistory.filter(h=>h.t>=now-S.settings.stopTime*1000);
+  if(recent.length<2) return true;
+  let mx=0; for(let i=1;i<recent.length;i++) mx=Math.max(mx,haversine(recent[i-1],recent[i]));
+  return mx<5; // 5m threshold
+}
+function collectPt(p){
+  if(p.status==='collected') return;
+  p.status='collected'; refreshMark(p); delete S.prox[p.id];
+  const mates=clusterMates(p);
+  mates.forEach(m=>{ m.status='collected'; refreshMark(m); delete S.prox[m.id]; });
+  const now=Date.now();
+  if(S.activeRun){ S.activeRun.collected.push({id:p.id,name:p.name,time:now}); mates.forEach(m=>S.activeRun.collected.push({id:m.id,name:m.name,time:now})); }
+  notif(`✅ ${p.name}${mates.length>0?`（+${mates.length}箇所）`:''}`,'s');
+  updStats(); chkTruckDone();
+}
+function manualCollect(id){ const p=S.points.find(x=>x.id===id); if(p){ collectPt(p); if(S.infoWindow) S.infoWindow.close(); } }
+function chkTruckDone(){ if(S.points.filter(p=>p.cycle===S.truckNum).every(p=>p.status==='collected')){ notif(`🏁 ${S.truckNum}台目完了！処理場へ`,'w'); document.getElementById('fac-btn').classList.add('urgent'); } }
+
+// ════════════════════════════════════════════════════════
+//  FACILITY — long press
+// ════════════════════════════════════════════════════════
+let facTimer=null;
+function facStart(e){ if(e) e.preventDefault(); const fill=document.getElementById('fac-fill'); fill.style.transition='none'; fill.style.width='0%'; void fill.offsetWidth; fill.classList.add('go'); fill.style.width='100%'; facTimer=setTimeout(()=>{ goFacility(); fill.classList.remove('go'); fill.style.width='0%'; },1500); }
+function facEnd(){ clearTimeout(facTimer); facTimer=null; const fill=document.getElementById('fac-fill'); fill.classList.remove('go'); fill.style.width='0%'; }
+function goFacility(){
+  S.facilityVisits++;
+  document.getElementById('fac-btn').classList.remove('urgent');
+  const curPts=S.points.filter(p=>p.cycle===S.truckNum);
+  const remaining=curPts.filter(p=>p.status!=='collected').length;
+  const nextPts=S.points.filter(p=>p.cycle===S.truckNum+1);
+  const extraCol=nextPts.filter(p=>p.status==='collected').length;
+  if(S.activeRun){ S.activeRun.endTime=Date.now(); S.activeRun.facilityTime=Date.now(); S.activeRun.remaining=remaining; S.activeRun.extra=extraCol; S.runHistory.push({...S.activeRun,collected:[...S.activeRun.collected],routeCoords:[...S.activeRun.routeCoords]}); S.allHistory.push({...S.activeRun,collected:[...S.activeRun.collected]}); Store.saveHistory(S.allHistory); }
+  let msg='🏭 処理場 完了';
+  if(remaining>0) msg+=`｜${S.truckNum}台目 残り${remaining}箇所`;
+  if(extraCol>0) msg+=`｜${S.truckNum+1}台目を${extraCol}箇所先取り`;
+  notif(msg,'i');
+  const truckDone=S.points.filter(p=>p.cycle===S.truckNum).every(p=>p.status==='collected');
+  if(truckDone&&S.truckNum<2){ S.truckNum++; S.points.forEach(p=>refreshMark(p)); }
+  S.activeRun={label:`ラン ${S.runHistory.length+1}`,truckNum:S.truckNum,startTime:Date.now(),collected:[],routeCoords:[]};
+  updTopBar(); updStats();
+}
+
+// ════════════════════════════════════════════════════════
+//  ZONE UI
+// ════════════════════════════════════════════════════════
+function updZoneUI(){
+  const now=Date.now(); const izp=S.points.filter(p=>p.status==='in-zone'&&S.prox[p.id]);
+  const zi=document.getElementById('zone-ind');
+  if(!izp.length){ zi.style.display='none'; return; }
+  const best=izp.reduce((a,b)=>(now-S.prox[a.id].enteredAt)>(now-S.prox[b.id].enteredAt)?a:b);
+  const pct=Math.min(100,(now-S.prox[best.id].enteredAt)/(S.settings.stopTime*1000)*100);
+  zi.style.display='flex'; document.getElementById('zi-nm').textContent=best.name; document.getElementById('zi-fill').style.width=pct+'%';
+}
+
+// ════════════════════════════════════════════════════════
+//  HISTORY
+// ════════════════════════════════════════════════════════
+function openHist(){ renderHist(); document.getElementById('hist-ovl').classList.remove('hidden'); document.getElementById('hist-panel').classList.add('open'); }
+function closeHist(){ document.getElementById('hist-ovl').classList.add('hidden'); document.getElementById('hist-panel').classList.remove('open'); }
+function renderHist(){
+  const body=document.getElementById('hist-body');
+  const runs=[...S.runHistory];
+  if(S.activeRun&&(S.activeRun.collected.length>0||S.activeRun.routeCoords.length>0)) runs.push({...S.activeRun,_active:true});
+  if(!runs.length){ body.innerHTML='<div class="h-empty">まだ収集履歴がありません</div>'; return; }
+  const ts=t=>fmtTime(t);
+  body.innerHTML=runs.map(run=>{
+    const status=run._active?'<span style="color:var(--yw)">進行中</span>':`${ts(run.startTime)} → ${ts(run.endTime)}`;
+    const pts=run.collected.map(c=>`<div class="h-pt"><span>✅</span><span class="h-ptnm">${c.name}</span><span class="h-pttm">${ts(c.time)}</span></div>`).join('');
+    const fac=run.facilityTime?`<div class="h-fac"><span>🏭</span><span style="flex:1;font-size:12px">ごみ処理場</span><span class="h-pttm">${ts(run.facilityTime)}</span></div>`:'';
+    let extra='';
+    if(!run._active&&run.remaining>0) extra+=`<div style="padding:4px 12px;font-size:11px;color:var(--rd);">⚠️ ${run.truckNum}台目 残り${run.remaining}箇所</div>`;
+    if(!run._active&&run.extra>0) extra+=`<div style="padding:4px 12px;font-size:11px;color:var(--bl);">🔵 ${run.truckNum+1}台目 ${run.extra}箇所先取り</div>`;
+    const empty=!pts&&!fac?'<div class="h-nopt">収集なし</div>':'';
+    return `<div class="h-run${run._active?' act':''}"><div class="h-hd"><span class="h-lbl">${run.label}</span><span class="h-tb ${run.truckNum===1?'t1':'t2'}">${run.truckNum}台目</span><span class="h-st">${status}</span></div><div class="h-body">${pts}${fac}${extra}${empty}</div></div>`;
+  }).reverse().join('');
+}
+
+// ════════════════════════════════════════════════════════
+//  COMPLETION
+// ════════════════════════════════════════════════════════
+function openComp(){
+  const pending=S.points.filter(p=>p.status!=='collected');
+  const total=S.points.length,done=total-pending.length;
+  const hd=document.getElementById('cd-hd'),bd=document.getElementById('cd-body');
+  if(!pending.length){ hd.innerHTML=`<div class="ci">🎉</div><div class="ct" style="color:var(--gn)">全ポイント収集完了！</div><div class="cc ok">${done} / ${total}</div>`; bd.innerHTML=`<div style="text-align:center;padding:8px 0;color:var(--dm);font-size:13px">処理場: ${S.facilityVisits}回　ラン: ${S.runHistory.length+(S.activeRun?1:0)}回</div>`; }
+  else { hd.innerHTML=`<div class="ci">⚠️</div><div class="ct" style="color:var(--yw)">未収集ポイントがあります</div><div class="cc ng">${done} / ${total}</div>`; bd.innerHTML=`<div class="miss-ttl">取り忘れ ${pending.length} 箇所</div>${pending.map(p=>`<div class="miss-item"><span class="miss-tb ${p.cycle===1?'t1':'t2'}">${p.cycle===1?'1台目':'2台目'}</span><span>${p.name}</span></div>`).join('')}`; }
+  document.getElementById('comp-ovl').classList.remove('hidden'); document.getElementById('comp-dlg').classList.add('open');
+}
+function closeComp(){ document.getElementById('comp-ovl').classList.add('hidden'); document.getElementById('comp-dlg').classList.remove('open'); }
+
+// ════════════════════════════════════════════════════════
+//  TOP BAR / STATS
+// ════════════════════════════════════════════════════════
+function updTopBar(){
+  document.getElementById('t-veh').textContent=S.vehicleName||'';
+  document.getElementById('t-day').textContent=S.wasteType==='kan'?`${S.day}曜日`:'大型';
+  const tb=document.getElementById('t-truck'); tb.textContent=`${S.truckNum}台目`; tb.className=`badge ${S.truckNum===1?'bt1':'bt2'}`;
+  const tw=document.getElementById('t-waste'); tw.textContent=S.wasteType==='kan'?'🔥 可燃':'📦 大型'; tw.className=`badge ${S.wasteType==='kan'?'bwk':'bwo'}`;
+}
+function updStats(){
+  document.getElementById('sc-col').textContent=S.points.filter(p=>p.status==='collected').length;
+  document.getElementById('sc-pen').textContent=S.points.filter(p=>p.status!=='collected').length;
+  document.getElementById('sc-tot').textContent=S.points.length;
+  document.getElementById('sc-fac').textContent=S.facilityVisits;
+}
+
+// ════════════════════════════════════════════════════════
+//  SETTINGS
+// ════════════════════════════════════════════════════════
+function openSP(){ document.getElementById('sp-ovl').classList.remove('hidden'); document.getElementById('sp-panel').classList.add('open'); }
+function closeSP(){ document.getElementById('sp-ovl').classList.add('hidden'); document.getElementById('sp-panel').classList.remove('open'); }
+function updSettings(){
+  S.settings.radius=+document.getElementById('r-sl').value;
+  S.settings.stopTime=+document.getElementById('s-sl').value;
+  S.settings.accThresh=+document.getElementById('acc-sl').value;
+  document.getElementById('r-val').textContent=S.settings.radius+'m';
+  document.getElementById('s-val').textContent=S.settings.stopTime+'秒';
+  document.getElementById('acc-val').textContent=S.settings.accThresh+'m';
+  Store.saveSettings(S.settings);
+}
+
+// ════════════════════════════════════════════════════════
+//  DATA PANEL
+// ════════════════════════════════════════════════════════
+function openDataPanel(){
+  const h=S.allHistory; const total=h.length;
+  const pts=h.reduce((a,r)=>a+(r.collected?.length||0),0);
+  const fac=h.reduce((a,r)=>a+(r.facilityTime?1:0),0);
+  document.getElementById('dp-total-runs').textContent=total;
+  document.getElementById('dp-total-pts').textContent=pts;
+  document.getElementById('dp-total-fac').textContent=fac;
+  document.getElementById('data-panel').classList.remove('hidden');
+}
+function closeDataPanel(){ document.getElementById('data-panel').classList.add('hidden'); }
+function dlJSON(obj,name){ const a=document.createElement('a'); a.href='data:application/json,'+encodeURIComponent(JSON.stringify(obj,null,2)); a.download=name+'_'+new Date().toISOString().slice(0,10)+'.json'; a.click(); }
+function exportHistory(){ dlJSON(S.allHistory,'navi_history'); }
+function exportGPSLog(){ dlJSON(Store.loadGPS(),'navi_gps_log'); }
+function exportPoints(){ dlJSON({vehicles:DB.vehicles,pts:DB.pts},'navi_points'); }
+function exportAll(){ dlJSON({db:{vehicles:DB.vehicles,pts:DB.pts},history:S.allHistory,gps:Store.loadGPS(),settings:S.settings,exportedAt:new Date().toISOString()},'navi_backup'); toast('💾 ダウンロード完了','s'); }
+function importData(ev){
+  const f=ev.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try {
+      const d=JSON.parse(e.target.result);
+      if(d.db){ DB.vehicles=d.db.vehicles; DB.pts=d.db.pts; DB.nextVid=d.db.nextVid||7; DB.nextPid=d.db.nextPid||2000; Store.saveDB(); }
+      if(d.history){ S.allHistory=d.history; Store.saveHistory(d.history); }
+      if(d.settings){ S.settings=d.settings; Store.saveSettings(d.settings); applyStoredSettings(); }
+      buildVehDD(); toast('✅ インポート完了','s');
+    } catch(err){ toast('⚠️ ファイルが無効です','w'); }
+  };
+  r.readAsText(f);
+  ev.target.value='';
+}
+function clearHistory(){ if(!confirm('全収集履歴を削除しますか？')) return; S.allHistory=[]; Store.saveHistory([]); toast('🗑️ 履歴をクリアしました','i'); }
+function clearAll(){ if(!confirm('全データをリセットしますか？この操作は取り消せません。')) return; Object.values(STORAGE_KEYS).forEach(k=>Store.del(k)); location.reload(); }
+
+// ════════════════════════════════════════════════════════
+//  NOTIFICATIONS
+// ════════════════════════════════════════════════════════
+let notifTmr=null;
+function notif(msg,type='s'){
+  document.querySelectorAll('.map-notif').forEach(n=>n.remove());
+  const n=document.createElement('div'); n.className='map-notif';
+  const col=type==='s'?'var(--gn)':type==='w'?'var(--yw)':'var(--bl)';
+  n.style.cssText=`position:absolute;bottom:120px;left:50%;transform:translateX(-50%);z-index:2000;background:var(--sf2);border:1.5px solid ${col};border-radius:10px;padding:9px 16px;font-size:13px;font-weight:700;color:${col};box-shadow:0 6px 24px rgba(0,0,0,.6);pointer-events:none;text-align:center;max-width:90%;white-space:normal;line-height:1.4;`;
+  n.textContent=msg; document.getElementById('map-screen').appendChild(n);
+  clearTimeout(notifTmr); notifTmr=setTimeout(()=>n.remove(),4000);
+}
+let toastTmr=null;
+function toast(msg,type='s'){
+  const t=document.getElementById('toast'); t.textContent=msg; t.className=type; t.style.display='block';
+  clearTimeout(toastTmr); toastTmr=setTimeout(()=>t.style.display='none',2500);
+}
+
+// ════════════════════════════════════════════════════════
+//  SIMULATION
+// ════════════════════════════════════════════════════════
+function buildSimPath(){
+  const lerp=(a,b,n)=>{const r=[];for(let i=0;i<=n;i++){const t=i/n;r.push({lat:a.lat+(b.lat-a.lat)*t,lng:a.lng+(b.lng-a.lng)*t});}return r;};
+  const stop=(p,n=28)=>{const r=[];for(let i=0;i<n;i++)r.push({lat:p.lat+(Math.random()-.5)*0.00002,lng:p.lng+(Math.random()-.5)*0.00002});return r;};
+  const c1=S.points.filter(p=>p.cycle===1),c2=S.points.filter(p=>p.cycle===2);
+  const path=[];
+  if(c1.length){ path.push(...lerp(COMPANY,c1[0],12)); c1.forEach((p,i)=>{ path.push(...stop(p)); if(i<c1.length-1) path.push(...lerp(p,c1[i+1],8)); }); path.push(...lerp(c1[c1.length-1],FACILITY,14)); path.push(...stop(FACILITY,10)); }
+  if(c2.length){ const st=c1.length?FACILITY:COMPANY; path.push(...lerp(st,c2[0],14)); c2.forEach((p,i)=>{ path.push(...stop(p)); if(i<c2.length-1) path.push(...lerp(p,c2[i+1],8)); }); path.push(...lerp(c2[c2.length-1],COMPANY,14)); }
+  return path;
+}
+function toggleSim(){ S.sim?stopSim():startSim(); }
+function startSim(){
+  S.sim=true; S.simIdx=0;
+  if(!S.simPath.length) S.simPath=buildSimPath();
+  document.getElementById('sim-btn').textContent='⏹ 停止';
+  document.getElementById('sim-btn').classList.add('on');
+  simStep();
+}
+function stopSim(){
+  S.sim=false; clearTimeout(S.simTmr);
+  document.getElementById('sim-btn').textContent='▶ デモ再生';
+  document.getElementById('sim-btn').classList.remove('on');
+}
+function simStep(){
+  if(!S.sim) return;
+  if(S.simIdx>=S.simPath.length){ stopSim(); notif('🎉 デモ完了！','i'); return; }
+  const wp=S.simPath[S.simIdx];
+  onPos(wp.lat,wp.lng,Date.now(),3); // simulate 3m accuracy
+  if(haversine(wp,FACILITY)<35&&S.points.filter(p=>p.cycle===1).every(p=>p.status==='collected')&&S.truckNum===1)
+    setTimeout(goFacility,200);
+  S.simIdx++; S.simTmr=setTimeout(simStep,300);
+}
+function centerMe(){ if(S.currentPos&&S.map) S.map.panTo(S.currentPos); }
+
+// ════════════════════════════════════════════════════════
+//  END ROUTE
+// ════════════════════════════════════════════════════════
+function endRoute(){
+  if(!confirm('本日の収集を終了しますか？')) return;
+  // Flush GPS buffer
+  if(gpsBuf.length){ Store.appendGPS(gpsBuf); gpsBuf=[]; }
+  // Save any remaining history
+  if(S.activeRun&&S.activeRun.collected.length>0){
+    S.allHistory.push({...S.activeRun,collected:[...S.activeRun.collected]});
+    Store.saveHistory(S.allHistory);
+  }
+  if(S.watchId) navigator.geolocation.clearWatch(S.watchId);
+  stopSim(); facEnd(); stopSessionAutoSave(); Store.delSession();
+  if(S.map){
+    if(S.route){ S.route.setMap(null); S.route=null; }
+    Object.values(S.markers).forEach(m=>m.setMap(null));
+    if(S.posMarker){ S.posMarker.setMap(null); S.posMarker=null; }
+    if(S.infoWindow){ S.infoWindow.close(); S.infoWindow=null; }
+    S.map=null;
+  }
+  S.markers={}; S.mode=null;
+  S.vehicleId=null; S.vehicleName=null; S.day=null; S.wasteType=null;
+  S.runHistory=[]; S.activeRun=null;
+  document.querySelectorAll('.sel-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.waste-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('day-sg').classList.add('hidden');
+  document.getElementById('start-btn').classList.remove('ready');
+  ['hist-ovl','comp-ovl','sp-ovl'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  document.getElementById('hist-panel').classList.remove('open');
+  document.getElementById('comp-dlg').classList.remove('open');
+  document.getElementById('sp-panel').classList.remove('open');
+  document.getElementById('gps-badge').style.display='none';
+  document.getElementById('t-mode').style.display='none';
+  document.getElementById('demo-bar').style.display='none';
+  document.getElementById('real-bar').style.display='none';
+  document.getElementById('mode-overlay').classList.remove('hidden');
+  document.getElementById('map-screen').classList.add('hidden');
+  document.getElementById('sel').classList.remove('hidden');
+  S.prevLayers.forEach(l=>l.setMap(null)); S.prevLayers=[];
+  const ph=document.getElementById('prev-ph'); ph.style.display='flex'; ph.classList.remove('fade');
+  document.getElementById('prev-badge').style.display='none';
+  if(S.prevMap) google.maps.event.trigger(S.prevMap,'resize');
+  buildVehDD();
+}
+
+// ════════════════════════════════════════════════════════
+//  UTILS
+// ════════════════════════════════════════════════════════
+function haversine(a,b){
+  const R=6371000,dL=(b.lat-a.lat)*Math.PI/180,dN=(b.lng-a.lng)*Math.PI/180;
+  const s=Math.sin(dL/2),t=Math.sin(dN/2);
+  return R*2*Math.atan2(Math.sqrt(s*s+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*t*t),Math.sqrt(1-(s*s+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*t*t)));
+}
+function fmtTime(ts){ const d=new Date(ts); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+
+// ════════════════════════════════════════════════════════
+//  ERROR BOUNDARY
+// ════════════════════════════════════════════════════════
+window.addEventListener('error', e=>{
+  console.error('App error:', e.error);
+  // Try to save session on crash
+  try { saveSession(); } catch(err){}
+});
+window.addEventListener('unhandledrejection', e=>{
+  console.error('Unhandled promise:', e.reason);
+  try { saveSession(); } catch(err){}
+});
+// Save before tab close / background
+window.addEventListener('beforeunload', ()=>{ if(gpsBuf.length) Store.appendGPS(gpsBuf); if(S.vehicleId) saveSession(); });
+document.addEventListener('visibilitychange', ()=>{ if(document.hidden){ if(gpsBuf.length){ Store.appendGPS(gpsBuf); gpsBuf=[]; } if(S.vehicleId) saveSession(); } });
+</script>
+</body>
+</html>
